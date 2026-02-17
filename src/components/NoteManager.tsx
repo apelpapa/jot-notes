@@ -23,7 +23,6 @@ export interface SaveData {
 
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-
 const defaultData: SaveData = {
   user: {
     name: "guest",
