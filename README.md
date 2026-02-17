@@ -9,6 +9,8 @@ Simple, low-friction note jotting with multiple storage options.
 - Vite, React, SWC Template
 - Tailwind CSS
 - Daisy UI
+- CSS Theme Change
+- React Icons
 
 ## Core Behavior
 
