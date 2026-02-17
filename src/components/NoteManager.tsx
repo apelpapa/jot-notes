@@ -57,6 +57,12 @@ export default function NoteManager() {
   const [currentData, setCurrentData] = useState<SaveData>(loadLocalSave() ?? defaultData);
   const [notes, setNotes] = useState<Note[]>(currentData.notes)
 
+    function handleDelete(noteId:string){
+        const updatedNotes = notes.filter(note=> note.id !== noteId)
+        setNotes(updatedNotes)
+        setCurrentData({...currentData, notes:updatedNotes})
+    }
+
   return (
     <>
       <div className="w-11/12 mx-auto">
@@ -65,7 +71,7 @@ export default function NoteManager() {
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
           {notes.map((note) => {
-            return <NoteCard key={note.id} noteId={note.id} noteTitle={note.title} noteContent={note.content} />;
+            return <NoteCard handleDelete={handleDelete} key={note.id} noteId={note.id} noteTitle={note.title} noteContent={note.content} />;
           })}
         </div>
       </div>
