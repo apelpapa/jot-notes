@@ -11,14 +11,14 @@ interface FixedFooterProps {
 
 export default function FixedFooter({ manualSave, currentData, setCurrentData }: FixedFooterProps) {
   //Change to import theme instead of setting to dark
-  const [theme, setTheme] = useState(currentData?.user.themePreference ?? "bumblebee");
+  const [theme, setTheme] = useState(currentData?.user.themePreference);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
   function toggleTheme() {
-    const newTheme = theme === "bumblebee" ? "dark" : "bumblebee";
+    const newTheme = theme === "light" ? "dark" : "light";
     const updatedCurrentData: SaveData = { ...currentData, user: { ...currentData.user, themePreference: newTheme } };
     setCurrentData(updatedCurrentData);
     setTheme(newTheme);
