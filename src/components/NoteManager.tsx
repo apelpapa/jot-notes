@@ -1,6 +1,9 @@
 import { useState } from "react";
 import NoteCard from "./NoteCard";
 import NewNoteCard from "./NewNoteCard";
+import FixedFooter from "./FixedFooter";
+
+const localStorageKey = "saveData";
 
 export interface Note {
   id: string;
@@ -8,23 +11,65 @@ export interface Note {
   content: string;
 }
 
-const sampleNote: Note = {
-  id: crypto.randomUUID(),
-  title: "Sample Note 1",
-  content: "The Content of Sample Note 1",
+export interface SaveData {
+  user: {
+    name: string;
+    id: string;
+    themePreference: string;
+  };
+  notes: Note[];
+}
+
+const defaultData: SaveData = {
+  user: {
+    name: "guest",
+    id: "0",
+    themePreference: "bumblebee",
+  },
+  notes: [],
 };
 
+function loadLocalSave(): SaveData | null {
+  try {
+    const raw = localStorage.getItem(localStorageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.user && Array.isArray(parsed.notes)) {
+      return parsed as SaveData;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLocalStorage(save: SaveData): void {
+  try {
+    const stringedSave = JSON.stringify(save);
+    localStorage.setItem(localStorageKey, stringedSave);
+  } catch {
+    console.error("Local Storage Save Failed");
+  }
+}
+
 export default function NoteManager() {
-  const [notes, setNotes] = useState<Note[]>([sampleNote]);
+  const [currentData, setCurrentData] = useState<SaveData>(loadLocalSave() ?? defaultData);
+  const [notes, setNotes] = useState<Note[]>(currentData.notes)
 
   return (
-    <div className="w-11/12 mx-auto">
-      <NewNoteCard currentNotes={notes} setNotes={setNotes} />
-      <div className="flex flex-wrap gap-2 mt-2">
-        {notes.map((note) => {
-          return <NoteCard key={note.id} noteId={note.id} noteTitle={note.title} noteContent={note.content} />;
-        })}
+    <>
+      <div className="w-11/12 mx-auto">
+        <div className="mt-2">
+          <NewNoteCard setCurrentData={setCurrentData} currentData={currentData} currentNotes={notes} setNotes={setNotes} />
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {notes.map((note) => {
+            return <NoteCard key={note.id} noteId={note.id} noteTitle={note.title} noteContent={note.content} />;
+          })}
+        </div>
       </div>
-    </div>
+      <FixedFooter setCurrentData={setCurrentData} currentData={currentData} manualSave={saveLocalStorage} />
+    </>
   );
 }
