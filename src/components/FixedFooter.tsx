@@ -1,16 +1,21 @@
-//implement theme storage in localstorage, then userdata in future
-
 import { useEffect, useState } from "react";
 import type { SaveData } from "./NoteManager";
 
 interface FixedFooterProps {
-  manualSave: (saveData: SaveData) => void;
+  saveLocal: (saveData: SaveData) => void;
   currentData: SaveData;
   setCurrentData: (saveData: SaveData) => void;
+  autoSaveStatus: boolean;
+  setAutoSaveStatus: (autoSaveStatus: boolean) => void;
 }
 
-export default function FixedFooter({ manualSave, currentData, setCurrentData }: FixedFooterProps) {
-  //Change to import theme instead of setting to dark
+export default function FixedFooter({
+  autoSaveStatus,
+  setAutoSaveStatus,
+  saveLocal,
+  currentData,
+  setCurrentData,
+}: FixedFooterProps) {
   const [theme, setTheme] = useState(currentData?.user.themePreference);
 
   useEffect(() => {
@@ -22,7 +27,20 @@ export default function FixedFooter({ manualSave, currentData, setCurrentData }:
     const updatedCurrentData: SaveData = { ...currentData, user: { ...currentData.user, themePreference: newTheme } };
     setCurrentData(updatedCurrentData);
     setTheme(newTheme);
-    console.log(currentData)
+    console.log(currentData);
+    if (autoSaveStatus) {
+      saveLocal(updatedCurrentData);
+    }
+  }
+
+  function toggleAutoSave() {
+    const newAutoSaveStatus = !autoSaveStatus;
+    const updatedCurrentData: SaveData = { ...currentData, user: { ...currentData.user, autoSave: newAutoSaveStatus } };
+    setAutoSaveStatus(newAutoSaveStatus);
+    setCurrentData(updatedCurrentData);
+    if (newAutoSaveStatus) {
+      saveLocal(updatedCurrentData);
+    }
   }
 
   return (
@@ -37,13 +55,13 @@ export default function FixedFooter({ manualSave, currentData, setCurrentData }:
         </svg>
       </label>
       <div className="self-center justify-self-center">
-        <button onClick={() => manualSave(currentData)} className="btn btn-primary ">
+        <button onClick={() => saveLocal(currentData)} className="btn btn-primary ">
           Manual Save
         </button>
       </div>
       <div className="self-center justify-self-end flex">
         <p className="my-auto text-lg">Auto Save:</p>
-        <input type="checkbox" className="toggle toggle-xl" />
+        <input type="checkbox" checked={autoSaveStatus} onChange={toggleAutoSave} className="toggle toggle-xl" />
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ export interface SaveData {
     name: string;
     id: string;
     themePreference: string;
+    autoSave: boolean;
   };
   notes: Note[];
 }
@@ -25,6 +26,7 @@ const defaultData: SaveData = {
     name: "guest",
     id: "0",
     themePreference: "bumblebee",
+    autoSave: false,
   },
   notes: [],
 };
@@ -55,27 +57,53 @@ function saveLocalStorage(save: SaveData): void {
 
 export default function NoteManager() {
   const [currentData, setCurrentData] = useState<SaveData>(loadLocalSave() ?? defaultData);
-  const [notes, setNotes] = useState<Note[]>(currentData.notes)
+  const [notes, setNotes] = useState<Note[]>(currentData.notes);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<boolean>(currentData.user.autoSave);
 
-    function handleDelete(noteId:string){
-        const updatedNotes = notes.filter(note=> note.id !== noteId)
-        setNotes(updatedNotes)
-        setCurrentData({...currentData, notes:updatedNotes})
+  function handleDelete(noteId: string) {
+    const updatedNotes = notes.filter((note) => note.id !== noteId);
+    setNotes(updatedNotes);
+    const updatedCurrentData = { ...currentData, notes: updatedNotes };
+    setCurrentData(updatedCurrentData);
+    if (autoSaveStatus) {
+      saveLocalStorage(updatedCurrentData);
     }
+  }
 
   return (
     <>
       <div className="w-11/12 mx-auto">
         <div className="mt-2">
-          <NewNoteCard setCurrentData={setCurrentData} currentData={currentData} currentNotes={notes} setNotes={setNotes} />
+          <NewNoteCard
+            autoSaveStatus={autoSaveStatus}
+            setCurrentData={setCurrentData}
+            currentData={currentData}
+            currentNotes={notes}
+            setNotes={setNotes}
+            saveLocal={saveLocalStorage}
+          />
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
           {notes.map((note) => {
-            return <NoteCard handleDelete={handleDelete} key={note.id} noteId={note.id} noteTitle={note.title} noteContent={note.content} />;
+            return (
+              <NoteCard
+                handleDelete={handleDelete}
+                key={note.id}
+                noteId={note.id}
+                noteTitle={note.title}
+                noteContent={note.content}
+              />
+            );
           })}
         </div>
       </div>
-      <FixedFooter setCurrentData={setCurrentData} currentData={currentData} manualSave={saveLocalStorage} />
+      <FixedFooter
+        setAutoSaveStatus={setAutoSaveStatus}
+        autoSaveStatus={autoSaveStatus}
+        setCurrentData={setCurrentData}
+        currentData={currentData}
+        saveLocal={saveLocalStorage}
+      />
     </>
   );
 }

@@ -6,9 +6,18 @@ interface NewNoteCardProps {
   currentNotes: Note[];
   setCurrentData: (saveData: SaveData) => void;
   currentData: SaveData;
+  autoSaveStatus: boolean;
+  saveLocal: (saveData: SaveData) => void;
 }
 
-export default function NewNoteCard({ setNotes, currentNotes, setCurrentData, currentData }: NewNoteCardProps) {
+export default function NewNoteCard({
+  saveLocal,
+  autoSaveStatus,
+  setNotes,
+  currentNotes,
+  setCurrentData,
+  currentData,
+}: NewNoteCardProps) {
   const [noteTitle, setNoteTitle] = useState<string>("");
   const [noteContent, setNoteContent] = useState<string>("");
 
@@ -24,7 +33,10 @@ export default function NewNoteCard({ setNotes, currentNotes, setCurrentData, cu
     setNoteContent("");
     const updatedCurrentData: SaveData = { ...currentData, notes: updatedNotes };
     setCurrentData(updatedCurrentData);
-    e.currentTarget.reset()
+    if(autoSaveStatus){
+      saveLocal(updatedCurrentData)
+    }
+    e.currentTarget.reset();
   }
 
   return (
