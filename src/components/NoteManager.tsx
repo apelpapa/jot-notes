@@ -21,11 +21,14 @@ export interface SaveData {
   notes: Note[];
 }
 
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+
 const defaultData: SaveData = {
   user: {
     name: "guest",
     id: "0",
-    themePreference: "bumblebee",
+    themePreference: (prefersDark ? 'dark' : 'light') ,
     autoSave: false,
   },
   notes: [],
