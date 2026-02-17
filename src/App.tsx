@@ -1,18 +1,18 @@
-import { useEffect } from "react";
-import NoteCard from "./components/NoteCard";
-import { themeChange } from "theme-change";
-import Footer from "./components/Footer";
+//Todo
+//Favicon
+
+import NewNoteCard from "./components/NewNoteCard";
+import FixedFooter from "./components/FixedFooter";
+import Notes from "./components/Notes";
 
 function App() {
-  useEffect(() => {
-    themeChange(false);
-  }, []);
 
   return (
-    <>
-      <NoteCard />
-      <Footer />
-    </>
+    <div className="p-2">
+      <NewNoteCard />
+      <Notes />
+      <FixedFooter />
+    </div>
   );
 }
 
