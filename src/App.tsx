@@ -1,16 +1,15 @@
 //Todo
 //Favicon
 
-import NewNoteCard from "./components/NewNoteCard";
 import FixedFooter from "./components/FixedFooter";
-import Notes from "./components/Notes";
+import NoteManager from "./components/NoteManager";
 
 function App() {
+  console.log(typeof(crypto.randomUUID()))
 
   return (
     <div className="p-2">
-      <NewNoteCard />
-      <Notes />
+      <NoteManager />
       <FixedFooter />
     </div>
   );

@@ -1,10 +1,10 @@
 interface NoteCardProps {
-    noteId: number
+    noteId: string
     noteTitle: string,
     noteContent: string
 }
 
-export default function NoteCard({ noteId, noteTitle, noteContent }:NoteCardProps) {
+export default function NoteCard({ noteTitle, noteContent }:NoteCardProps) {
   return (
     <div className="card bg-base-200 w-96 shadow-sm">
       <div className="card-body">
