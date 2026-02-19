@@ -1,7 +1,8 @@
 import express from 'express'
+import env from 'dotenv'
 
-const port = 3000
-
+env.config()
+const port = process.env.PORT
 const app = express()
 
 app.listen(port, ()=>{
