@@ -2,6 +2,7 @@ import { useState } from "react";
 import NoteCard from "./NoteCard";
 import NewNoteCard from "./NewNoteCard";
 import FixedFooter from "./FixedFooter";
+import Header from "./Header";
 
 const localStorageKey = "saveData";
 
@@ -25,9 +26,9 @@ const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
 const defaultData: SaveData = {
   user: {
-    name: "guest",
+    name: "Guest",
     id: "0",
-    themePreference: (prefersDark ? 'dark' : 'light') ,
+    themePreference: prefersDark ? "dark" : "light",
     autoSave: false,
   },
   notes: [],
@@ -74,6 +75,7 @@ export default function NoteManager() {
 
   return (
     <>
+      <Header currentData={currentData} />
       <div className="w-11/12 mx-auto">
         <div className="mt-2">
           <NewNoteCard
