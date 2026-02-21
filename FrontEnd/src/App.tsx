@@ -1,5 +1,4 @@
 //Todo
-//Favicon
 
 import NoteManager from "./components/NoteManager";
 

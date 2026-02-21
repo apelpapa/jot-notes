@@ -22,6 +22,7 @@ export interface SaveData {
   notes: Note[];
 }
 
+//make is so that there is a check for save data, if not then apply this preference
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
 const defaultData: SaveData = {
