@@ -13,13 +13,15 @@ const port: number = parseInt(process.env.PORT || '3000')
 const app = express()
 
 //init pg database and connect
-try{const db = new pg.Client()
-await db.connect()}
-catch(err){
+try {
+    const db = new pg.Client()
+    await db.connect()
+}
+catch (err) {
     console.error('PG Connection Error', err)
 }
 
 
-app.listen(port, ()=>{
+app.listen(port, () => {
     console.log(`Find Us At ${port}`)
 })
