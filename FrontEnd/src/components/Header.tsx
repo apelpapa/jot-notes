@@ -2,24 +2,30 @@ import { useState } from "react";
 import type { SaveData } from "./NoteManager";
 import { createPortal } from "react-dom";
 import ModalContainer from "./ModalContainer";
+import UserModal from "./UserModel";
 
 const tab1 = {
-    name: 'Global Notes',
-    link: ''
-}
+  name: "Global Notes",
+  link: "",
+};
 
 const tab2 = {
-    name: 'My Notes',
-    link: ''
+  name: "My Notes",
+  link: "",
+};
+
+const tab3 = {
+  name: "About",
+  link: "",
+};
+
+interface HeaderProps {
+  currentData: SaveData;
 }
 
-interface HeaderProps{
-    currentData:SaveData
-}
-
-export default function Header({currentData}:HeaderProps) {
-    const [userModal, setUserModal] = useState(false)
-    const user = currentData.user
+export default function Header({ currentData }: HeaderProps) {
+  const [userModal, setUserModal] = useState(false);
+  const user = currentData.user;
   return (
     <>
       <div className="navbar bg-base-100 shadow-sm">
@@ -46,6 +52,9 @@ export default function Header({currentData}:HeaderProps) {
               <li>
                 <a href={tab2.link}>{tab2.name}</a>
               </li>
+              <li>
+                <a href={tab3.link}>{tab3.name}</a>
+              </li>
             </ul>
           </div>
           <a className="btn btn-ghost text-xl">Jot Notes</a>
@@ -56,15 +65,20 @@ export default function Header({currentData}:HeaderProps) {
               <a>{tab1.name}</a>
             </li>
             <li>
-                <a href={tab2.link}>{tab2.name}</a>
+              <a href={tab2.link}>{tab2.name}</a>
+            </li>
+            <li>
+              <a href={tab3.link}>{tab3.name}</a>
             </li>
           </ul>
         </div>
         <div className="navbar-end">
-          <button onClick={()=>setUserModal(true)} className="btn">{user?.firstName || 'Guest'}</button>
+          <button onClick={() => setUserModal(true)} className="btn">
+            {user?.firstName || "Guest"}
+          </button>
         </div>
       </div>
-      {userModal && createPortal(<ModalContainer onClose={()=> setUserModal(false)} />, document.body)}
+      {userModal && createPortal(<ModalContainer onClose={() => setUserModal(false)} ><UserModal /></ModalContainer>, document.body)}
     </>
   );
 }
