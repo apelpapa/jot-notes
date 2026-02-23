@@ -1,4 +1,4 @@
-import { Client } from "pg";
+import { Client } from "../node_modules/@types/pg";
 
 export interface Note {
   id: string;
