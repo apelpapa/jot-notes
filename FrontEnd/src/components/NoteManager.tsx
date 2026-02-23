@@ -90,6 +90,7 @@ export default function NoteManager() {
     async function loadDbSave(){
       const dbSave = await getDbSave()
       setCurrentData(dbSave)
+      setNotes(dbSave.notes)
     }
     loadDbSave()
   }, []);
