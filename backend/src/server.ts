@@ -1,6 +1,6 @@
 import express from 'express'
 import env from 'dotenv'
-import pg from '../node_modules/@types/pg'
+import pg from 'pg'
 import bcrypt from 'bcryptjs'
 import userRetrieval from './userRetrieval'
 
