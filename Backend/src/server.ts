@@ -27,8 +27,8 @@ catch (err) {
 }
 
 app.get(apiURL+'/', async (req, res) => {
-    await userRetrieval(db)
-    res.send('hello from backend')
+    const saveData = await userRetrieval(db)
+    res.send(saveData)
 })
 
 //Establish Port

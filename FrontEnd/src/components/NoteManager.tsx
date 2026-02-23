@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import NoteCard from "./NoteCard";
 import NewNoteCard from "./NewNoteCard";
 import FixedFooter from "./FixedFooter";
 import Header from "./Header";
 
 const localStorageKey = "saveData";
+const apiBase = "/api";
 
 export interface Note {
   id: string;
@@ -14,10 +15,14 @@ export interface Note {
 
 export interface SaveData {
   user: {
-    name: string;
-    id: string;
+    id: number;
+    username: string;
+    firstName: string;
+    lastName?: string;
     themePreference: string;
     autoSave: boolean;
+    avatarUrl?: string;
+    email: string;
   };
   notes: Note[];
 }
@@ -27,9 +32,11 @@ const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
 const defaultData: SaveData = {
   user: {
-    name: "Guest",
-    id: "0",
+    id: -1,
+    username: "GuestUser",
+    firstName: "Guest",
     themePreference: prefersDark ? "dark" : "light",
+    email: "no@email.com",
     autoSave: false,
   },
   notes: [],
@@ -59,10 +66,33 @@ function saveLocalStorage(save: SaveData): void {
   }
 }
 
+async function getDbSave():Promise<SaveData> {
+  let resData: SaveData = loadLocalSave() ?? defaultData;
+  try {
+    const response = await fetch(apiBase);
+    if (!response.ok){
+      return resData
+    }
+    resData = response.headers.get("content-type") ? await response.json() : (loadLocalSave() ?? defaultData);
+  } catch (err) {
+    console.error(err);
+    resData = loadLocalSave() ?? defaultData;
+  }
+  return resData;
+}
+
 export default function NoteManager() {
   const [currentData, setCurrentData] = useState<SaveData>(loadLocalSave() ?? defaultData);
   const [notes, setNotes] = useState<Note[]>(currentData.notes);
   const [autoSaveStatus, setAutoSaveStatus] = useState<boolean>(currentData.user.autoSave);
+
+  useEffect(() => {
+    async function loadDbSave(){
+      const dbSave = await getDbSave()
+      setCurrentData(dbSave)
+    }
+    loadDbSave()
+  }, []);
 
   function handleDelete(noteId: string) {
     const updatedNotes = notes.filter((note) => note.id !== noteId);

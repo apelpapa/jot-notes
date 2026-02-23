@@ -62,7 +62,7 @@ export default function Header({currentData}:HeaderProps) {
           </ul>
         </div>
         <div className="navbar-end">
-          <button onClick={()=>setUserModal(true)} className="btn">{user?.name || 'Guest'}</button>
+          <button onClick={()=>setUserModal(true)} className="btn">{user?.firstName || 'Guest'}</button>
         </div>
       </div>
       {userModal && createPortal(<ModalContainer onClose={()=> setUserModal(false)} />, document.body)}
