@@ -6,7 +6,7 @@ import NewNoteCard from "./NewNoteCard";
 import FixedFooter from "./FixedFooter";
 import Header from "./Header";
 
-const localStorageKey = "saveData";
+//const localStorageKey = "saveData";
 export const apiBase = "/api";
 
 export interface Note {
@@ -43,9 +43,9 @@ const defaultUserData: UserData = {
   autoSave: false,
 };
 
-async function saveUser(userData: UserData): Promise<void> {}
+//async function saveUser(userData: UserData): Promise<void> {}
 
-async function saveNote(newNote: Note): Promise<void> {}
+//async function saveNote(newNote: Note): Promise<void> {}
 
 async function loadUser(): Promise<UserData> {
   let userData: UserData = defaultUserData;
