@@ -113,14 +113,11 @@ export default function NoteManager() {
           })}
         </div>
       </div>
-      {/* 
+      
       <FixedFooter
-        setAutoSaveStatus={setAutoSaveStatus}
-        autoSaveStatus={autoSaveStatus}
-        setCurrentData={setCurrentData}
-        currentData={currentData}
-        saveLocal={saveData}
-      /> */}
+      userData={userData}
+      setUserData={setUserData}
+      /> 
     </>
   );
 }

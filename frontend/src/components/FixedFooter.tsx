@@ -1,46 +1,26 @@
+//see comments
+
 import { useEffect, useState } from "react";
-import type { SaveData } from "./NoteManager";
+import type { UserData } from "./NoteManager";
 
 interface FixedFooterProps {
-  saveLocal: (saveData: SaveData) => void;
-  currentData: SaveData;
-  setCurrentData: (saveData: SaveData) => void;
-  autoSaveStatus: boolean;
-  setAutoSaveStatus: (autoSaveStatus: boolean) => void;
+  userData: UserData;
+  setUserData: (userData: UserData) => void;
 }
 
-export default function FixedFooter({
-  autoSaveStatus,
-  setAutoSaveStatus,
-  saveLocal,
-  currentData,
-  setCurrentData,
-}: FixedFooterProps) {
-  const [theme, setTheme] = useState(currentData?.user.themePreference);
+export default function FixedFooter({ userData, setUserData }: FixedFooterProps) {
+  const [theme, setTheme] = useState(userData?.themePreference);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  function toggleTheme() {
+  function toggleTheme() { // need to put this change in db
     const newTheme = theme === "light" ? "dark" : "light";
-    const updatedCurrentData: SaveData = { ...currentData, user: { ...currentData.user, themePreference: newTheme } };
-    setCurrentData(updatedCurrentData);
+    const updatedUser: UserData = { ...userData, themePreference: newTheme };
+    console.log(updatedUser)
+    setUserData(updatedUser);
     setTheme(newTheme);
-    console.log(currentData);
-    if (autoSaveStatus) {
-      saveLocal(updatedCurrentData);
-    }
-  }
-
-  function toggleAutoSave() {
-    const newAutoSaveStatus = !autoSaveStatus;
-    const updatedCurrentData: SaveData = { ...currentData, user: { ...currentData.user, autoSave: newAutoSaveStatus } };
-    setAutoSaveStatus(newAutoSaveStatus);
-    setCurrentData(updatedCurrentData);
-    if (newAutoSaveStatus) {
-      saveLocal(updatedCurrentData);
-    }
   }
 
   return (
@@ -54,15 +34,7 @@ export default function FixedFooter({
           <path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" />
         </svg>
       </label>
-      <div className="self-center justify-self-center">
-        <button onClick={() => saveLocal(currentData)} className={`btn btn-primary ${autoSaveStatus ? 'hidden' : ''}`}>
-          Manual Save
-        </button>
-      </div>
-      <div className="self-center justify-self-end flex flex-col justify-center items-center gap-0">
-        <input type="checkbox" checked={autoSaveStatus} onChange={toggleAutoSave} className="toggle toggle-xl" />
-        <p className="my-auto text-lg">Auto Save</p>
-      </div>
+      <div className="self-center justify-self-center"></div>
     </div>
   );
 }
