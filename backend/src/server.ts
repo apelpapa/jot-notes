@@ -1,8 +1,14 @@
-import express, { json } from 'express'
+import express, { json, Request } from 'express'
 import env from 'dotenv'
 import pg from 'pg'
 import bcrypt from 'bcryptjs'
 import userRetrieval from './userRetrieval'
+import { deleteNote, noteRetrieval, postNote } from './noteManager'
+
+interface UserParams{
+    userId: string
+    noteId: string
+}
 
 //base url for api
 const apiURL = '/api'
@@ -27,13 +33,36 @@ catch (err) {
     console.error('PG Connection Error', err)
 }
 
-app.get(apiURL+'/', async (req, res) => {
-    const saveData = await userRetrieval(db)
-    res.send(saveData)
+app.get(apiURL+'/users', async (req, res) => {
+    const userData = await userRetrieval(db)
+    res.send(userData)
+})
+
+app.get(apiURL+'/:userId/notes', async (req: Request<UserParams>, res)=>{
+    const id = parseInt(req.params.userId)
+    const noteData = await noteRetrieval(db, id)
+    res.send(noteData)
 })
 
 app.post(apiURL+'/user', async (req, res) => {
-    console.log(req.body)
+    //console.log(req.body)
+})
+
+app.post(apiURL+'/:userId/notes', async (req: Request<UserParams>, res)=>{
+    const id = parseInt(req.params.userId)
+    const response = await postNote(db, id, req.body)
+    res.send(response)
+})
+
+app.delete(apiURL+'/:userId/:noteId', async (req: Request<UserParams>, res)=>{
+    const userId = parseInt(req.params.userId)
+    const noteId = parseInt(req.params.noteId)
+    const response = await deleteNote(db, userId, noteId)
+    if(!response){
+        return res.json(-1)
+    } else {
+        return res.json(response)
+    }
 })
 
 //Establish Port

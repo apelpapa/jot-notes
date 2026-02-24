@@ -6,18 +6,9 @@ export interface Note {
   content: string;
 }
 
-export interface SaveData {
-  user: {
-    id: number;
-    username: string;
-    firstName: string;
-    lastName?: string;
-    themePreference?: string;
-    autoSave: boolean;
-    avatarUrl?: string;
-    email: string;
-  };
-  notes: Note[];
+export interface NewNote {
+  title: string;
+  content?: string
 }
 
 interface UserData {
@@ -44,7 +35,7 @@ async function getUserInfo(db: Client): Promise<UserData | null> {
       const resSaveData = response.rows[0];
       const saveData: UserData = {
         id: resSaveData.id,
-        username: resSaveData.username, //This probably should be grabbed from input, but idk
+        username: resSaveData.username,
         firstName: resSaveData.first_name,
         lastName: resSaveData.last_name ?? "",
         avatarUrl: resSaveData.avatar ?? "",
@@ -60,23 +51,15 @@ async function getUserInfo(db: Client): Promise<UserData | null> {
   }
 }
 
-async function getNoteData(db: Client, id: Number): Promise<Note[]> {
-  const response = await db.query("SELECT * FROM notes WHERE user_id = $1", [id]);
-  const notes = response.rows;
-  return notes;
-}
-
-export default async function userRetrieval(db: Client): Promise<SaveData | null> {
+export default async function userRetrieval(db: Client): Promise<UserData | null> {
   try {
     const userData: UserData | null = await getUserInfo(db);
     if (!userData) {
       return null;
     }
-    const noteData = await getNoteData(db, userData.id);
-    const resData: SaveData = { user: userData, notes: noteData };
-    return resData;
+    return userData;
   } catch (err) {
-    console.error("Could not retrieve data" + err);
+    console.error("Error retrieving user data" + err);
     return null;
   }
 }

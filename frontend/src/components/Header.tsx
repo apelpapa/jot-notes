@@ -1,8 +1,8 @@
 import { useState } from "react";
-import type { SaveData } from "./NoteManager";
 import { createPortal } from "react-dom";
 import ModalContainer from "./ModalContainer";
 import UserModal from "./UserModel";
+import type { UserData } from "./NoteManager";
 
 const tab1 = {
   name: "Global Notes",
@@ -20,12 +20,12 @@ const tab3 = {
 };
 
 interface HeaderProps {
-  currentData: SaveData;
+  userData: UserData;
 }
 
-export default function Header({ currentData }: HeaderProps) {
+export default function Header({ userData }: HeaderProps) {
   const [userModal, setUserModal] = useState(false);
-  const user = currentData.user;
+  //console.log(userData)
   return (
     <>
       <div className="navbar bg-base-100 shadow-sm">
@@ -74,7 +74,7 @@ export default function Header({ currentData }: HeaderProps) {
         </div>
         <div className="navbar-end">
           <button onClick={() => setUserModal(true)} className="btn">
-            {user?.firstName || "Guest"}
+            {userData.firstName}
           </button>
         </div>
       </div>

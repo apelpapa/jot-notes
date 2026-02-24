@@ -1,3 +1,5 @@
+//See comments
+
 import { useEffect, useState } from "react";
 import NoteCard from "./NoteCard";
 import NewNoteCard from "./NewNoteCard";
@@ -5,152 +7,120 @@ import FixedFooter from "./FixedFooter";
 import Header from "./Header";
 
 const localStorageKey = "saveData";
-const apiBase = "/api";
+export const apiBase = "/api";
 
 export interface Note {
   id: number;
   title: string;
-  content: string;
+  content?: string;
 }
 
-export interface SaveData {
-  user: {
-    id: number;
-    username: string;
-    firstName: string;
-    lastName?: string;
-    themePreference: string;
-    autoSave: boolean;
-    avatarUrl?: string;
-    email: string;
-  };
-  notes: Note[];
+export interface NewNote {
+  title: string;
+  content?: string
+}
+
+export interface UserData {
+  id: number;
+  username: string;
+  firstName: string;
+  lastName?: string;
+  themePreference: string;
+  autoSave: boolean;
+  avatarUrl?: string;
+  email: string;
 }
 
 //make is so that there is a check for save data, if not then apply this preference
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-const defaultData: SaveData = {
-  user: {
-    id: -1,
-    username: "GuestUser",
-    firstName: "Guest",
-    themePreference: prefersDark ? "dark" : "light",
-    email: "no@email.com",
-    autoSave: false,
-  },
-  notes: [],
+const defaultUserData: UserData = {
+  id: -1,
+  username: "GuestUser",
+  firstName: "Guest",
+  themePreference: prefersDark ? "dark" : "light",
+  email: "no@email.com",
+  autoSave: false,
 };
 
-function loadLocalSave(): SaveData | null {
-  try {
-    const raw = localStorage.getItem(localStorageKey);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && parsed.user && Array.isArray(parsed.notes)) {
-      return parsed as SaveData;
-    }
+async function saveUser(userData: UserData): Promise<void> {}
 
-    return null;
-  } catch {
-    return null;
-  }
-}
+async function saveNote(newNote: Note): Promise<void> {}
 
-async function saveData(save: SaveData): Promise<void> {
+async function loadUser(): Promise<UserData> {
+  let userData: UserData = defaultUserData;
   try {
-    const stringedSave = JSON.stringify(save);
-    localStorage.setItem(localStorageKey, stringedSave);
-    console.log(stringedSave)
-    if(save.user.id >= 0){
-      await fetch(apiBase+'/notes', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json'
-        },
-        body: stringedSave
-      })
+    const userRes = await fetch(apiBase + "/users");
+    if (!userRes.ok) {
+      return userData;
     }
-  } catch {
-    console.error("Local Storage Save Failed");
-  }
-}
-
-async function getDbSave():Promise<SaveData> {
-  let resData: SaveData = loadLocalSave() ?? defaultData;
-  try {
-    const response = await fetch(apiBase);
-    if (!response.ok){
-      return resData
-    }
-    resData = response.headers.get("content-type") ? await response.json() : (loadLocalSave() ?? defaultData);
+    userData = userRes.headers.get("content-type") ? await userRes.json() : defaultUserData;
   } catch (err) {
     console.error(err);
-    resData = loadLocalSave() ?? defaultData;
+    userData = defaultUserData;
   }
-  return resData;
+  return userData;
+}
+
+async function loadNotes(id: Number): Promise<Note[]> {
+  try {
+    const notesRes = await fetch(`${apiBase}/${id}/notes`);
+    return notesRes.json();
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
 }
 
 export default function NoteManager() {
-  const [currentData, setCurrentData] = useState<SaveData>(loadLocalSave() ?? defaultData);
-  const [notes, setNotes] = useState<Note[]>(currentData.notes);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<boolean>(currentData.user.autoSave);
+  const [userData, setUserData] = useState<UserData>(defaultUserData);
+  const [notes, setNotes] = useState<Note[]>([]);
 
   useEffect(() => {
-    async function loadDbSave(){
-      const dbSave = await getDbSave()
-      setCurrentData(dbSave)
-      setNotes(dbSave.notes)
-      setAutoSaveStatus(dbSave.user.autoSave)
+    async function loadData() {
+      const dbUser = await loadUser();
+      const dbNotes = await loadNotes(dbUser.id);
+      setUserData(dbUser);
+      setNotes(dbNotes);
     }
-    loadDbSave()
+    loadData();
   }, []);
-
-  function handleDelete(noteId: number) {
-    const updatedNotes = notes.filter((note) => note.id !== noteId);
-    setNotes(updatedNotes);
-    const updatedCurrentData = { ...currentData, notes: updatedNotes };
-    setCurrentData(updatedCurrentData);
-    if (autoSaveStatus) {
-      saveData(updatedCurrentData);
-    }
-  }
 
   return (
     <>
-      <Header currentData={currentData} />
+      <Header userData={userData} />
       <div className="w-11/12 mx-auto">
         <div className="mt-2">
           <NewNoteCard
-            autoSaveStatus={autoSaveStatus}
-            setCurrentData={setCurrentData}
-            currentData={currentData}
-            currentNotes={notes}
+            userData={userData}
+            notes={notes}
             setNotes={setNotes}
-            saveLocal={saveData}
           />
         </div>
         <div className="flex flex-wrap gap-2 mt-2 mb-24">
           {notes.map((note) => {
             return (
               <NoteCard
-                handleDelete={handleDelete}
-                key={note.id}
-                noteId={note.id}
-                noteTitle={note.title}
-                noteContent={note.content}
+              key={note.id}
+              title={note.title}
+              content={note.content}
+              noteId={note.id}
+              userId={userData.id}
+              notes={notes}
+              setNotes={setNotes}
               />
             );
           })}
         </div>
       </div>
+      {/* 
       <FixedFooter
         setAutoSaveStatus={setAutoSaveStatus}
         autoSaveStatus={autoSaveStatus}
         setCurrentData={setCurrentData}
         currentData={currentData}
         saveLocal={saveData}
-      />
+      /> */}
     </>
   );
 }
