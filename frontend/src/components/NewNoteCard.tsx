@@ -1,48 +1,43 @@
-import { useState } from "react";
-import type { Note, SaveData } from "./NoteManager";
+import { useRef, useState } from "react";
+import { apiBase, type NewNote, type Note, type UserData } from "./NoteManager";
 
 interface NewNoteCardProps {
+  userData: UserData;
+  notes: Note[];
   setNotes: (note: Note[]) => void;
-  currentNotes: Note[];
-  setCurrentData: (saveData: SaveData) => void;
-  currentData: SaveData;
-  autoSaveStatus: boolean;
-  saveLocal: (saveData: SaveData) => void;
 }
 
-export default function NewNoteCard({
-  saveLocal,
-  autoSaveStatus,
-  setNotes,
-  currentNotes,
-  setCurrentData,
-  currentData,
-}: NewNoteCardProps) {
+export default function NewNoteCard({ userData, notes, setNotes }: NewNoteCardProps) {
   const [noteTitle, setNoteTitle] = useState<string>("");
   const [noteContent, setNoteContent] = useState<string>("");
+  const formRef = useRef<HTMLFormElement>(null);
 
-  function handleSubmit(e: React.SubmitEvent<HTMLFormElement>): void {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
-    const updatedNotes: Note[] = currentNotes.concat({
-      title: noteTitle,
-      id: Math.floor(Math.random()*999999999),
-      content: noteContent,
-    });
-    setNotes(updatedNotes);
+    const newNote: NewNote = { title: noteTitle, content: noteContent };
+    const newNoteString: string = JSON.stringify(newNote);
+    try {
+      const response = await fetch(`${apiBase}/${userData.id}/notes`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: newNoteString,
+      });
+      const newNote: Note = await response.json();
+      setNotes(notes.concat(newNote))
+    } catch (err) {
+      console.error("Could Not Save Note, Notes Will Be Lost", err); // Some kind of handler to indicate that this note was not saved, need to manually save
+    }
     setNoteTitle("");
     setNoteContent("");
-    const updatedCurrentData: SaveData = { ...currentData, notes: updatedNotes };
-    setCurrentData(updatedCurrentData);
-    if(autoSaveStatus){
-      saveLocal(updatedCurrentData)
-    }
-    e.currentTarget.reset();
+    formRef.current?.reset();
   }
 
   return (
     <div className="card bg-base-300 max-w-96 shadow-sm">
       <div className="card-body">
-        <form onSubmit={handleSubmit} className="flex flex-col justify-center items-center">
+        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col justify-center items-center">
           <input
             type="text"
             className="input mb-2 validator"
