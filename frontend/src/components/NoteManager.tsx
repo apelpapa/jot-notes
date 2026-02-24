@@ -8,7 +8,7 @@ const localStorageKey = "saveData";
 const apiBase = "/api";
 
 export interface Note {
-  id: string;
+  id: number;
   title: string;
   content: string;
 }
@@ -57,10 +57,20 @@ function loadLocalSave(): SaveData | null {
   }
 }
 
-function saveLocalStorage(save: SaveData): void {
+async function saveData(save: SaveData): Promise<void> {
   try {
     const stringedSave = JSON.stringify(save);
     localStorage.setItem(localStorageKey, stringedSave);
+    console.log(stringedSave)
+    if(save.user.id >= 0){
+      await fetch(apiBase+'/notes', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: stringedSave
+      })
+    }
   } catch {
     console.error("Local Storage Save Failed");
   }
@@ -91,17 +101,18 @@ export default function NoteManager() {
       const dbSave = await getDbSave()
       setCurrentData(dbSave)
       setNotes(dbSave.notes)
+      setAutoSaveStatus(dbSave.user.autoSave)
     }
     loadDbSave()
   }, []);
 
-  function handleDelete(noteId: string) {
+  function handleDelete(noteId: number) {
     const updatedNotes = notes.filter((note) => note.id !== noteId);
     setNotes(updatedNotes);
     const updatedCurrentData = { ...currentData, notes: updatedNotes };
     setCurrentData(updatedCurrentData);
     if (autoSaveStatus) {
-      saveLocalStorage(updatedCurrentData);
+      saveData(updatedCurrentData);
     }
   }
 
@@ -116,10 +127,10 @@ export default function NoteManager() {
             currentData={currentData}
             currentNotes={notes}
             setNotes={setNotes}
-            saveLocal={saveLocalStorage}
+            saveLocal={saveData}
           />
         </div>
-        <div className="flex flex-wrap gap-2 mt-2">
+        <div className="flex flex-wrap gap-2 mt-2 mb-24">
           {notes.map((note) => {
             return (
               <NoteCard
@@ -138,7 +149,7 @@ export default function NoteManager() {
         autoSaveStatus={autoSaveStatus}
         setCurrentData={setCurrentData}
         currentData={currentData}
-        saveLocal={saveLocalStorage}
+        saveLocal={saveData}
       />
     </>
   );

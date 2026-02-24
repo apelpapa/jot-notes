@@ -50,7 +50,7 @@ async function getUserInfo(db: Client): Promise<UserData | null> {
         avatarUrl: resSaveData.avatar ?? "",
         email: resSaveData.email,
         themePreference: resSaveData.themePreference,
-        autoSave: resSaveData.autoSave,
+        autoSave: resSaveData.autosave,
       };
       return saveData;
     }

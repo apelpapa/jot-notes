@@ -25,7 +25,7 @@ export default function NewNoteCard({
     e.preventDefault();
     const updatedNotes: Note[] = currentNotes.concat({
       title: noteTitle,
-      id: crypto.randomUUID(),
+      id: Math.floor(Math.random()*999999999),
       content: noteContent,
     });
     setNotes(updatedNotes);

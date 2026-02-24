@@ -44,7 +44,7 @@ export default function FixedFooter({
   }
 
   return (
-    <div className="fixed bg-base-100 bottom-0 left-0 p-3 w-full grid grid-cols-3 footer border-t-2">
+    <div className="fixed bg-base-100 bottom-0 left-0 p-3 w-full grid grid-cols-3 footer border-t-2 max-h-24">
       <label className="swap swap-rotate justify-self-start self-center">
         <input type="checkbox" checked={theme === "dark"} onChange={toggleTheme} />
         <svg className="swap-on h-10 w-10 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

@@ -1,4 +1,4 @@
-import express from 'express'
+import express, { json } from 'express'
 import env from 'dotenv'
 import pg from 'pg'
 import bcrypt from 'bcryptjs'
@@ -15,6 +15,7 @@ const port: number = parseInt(process.env.PORT || '3000')
 
 //init express
 const app = express()
+app.use(json())
 
 //init pg database and connect
 
@@ -29,6 +30,10 @@ catch (err) {
 app.get(apiURL+'/', async (req, res) => {
     const saveData = await userRetrieval(db)
     res.send(saveData)
+})
+
+app.post(apiURL+'/user', async (req, res) => {
+    console.log(req.body)
 })
 
 //Establish Port

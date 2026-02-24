@@ -1,10 +1,10 @@
 import { FaTrash } from "react-icons/fa";
 
 interface NoteCardProps {
-  noteId: string;
+  noteId: number;
   noteTitle: string;
   noteContent: string;
-  handleDelete:(noteId: string)=>void
+  handleDelete:(noteId: number)=>void
 }
 
 export default function NoteCard({ handleDelete, noteId, noteTitle, noteContent }: NoteCardProps) {
