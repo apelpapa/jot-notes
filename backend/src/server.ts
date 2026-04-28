@@ -24,7 +24,6 @@ const app = express()
 app.use(json())
 
 //init pg database and connect
-
 const db = new pg.Client
 try {
     await db.connect()

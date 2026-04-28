@@ -52,6 +52,7 @@ async function loadUser(): Promise<UserData> {
   try {
     const userRes = await fetch(apiBase + "/users");
     if (!userRes.ok) {
+      console.log("could not access user table, returning default user") //debug line
       return userData;
     }
     userData = userRes.headers.get("content-type") ? await userRes.json() : defaultUserData;
@@ -59,6 +60,7 @@ async function loadUser(): Promise<UserData> {
     console.error(err);
     userData = defaultUserData;
   }
+  //console.log(userData) //debug line
   return userData;
 }
 

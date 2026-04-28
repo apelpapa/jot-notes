@@ -19,6 +19,7 @@ export async function noteRetrieval(db: Client, id: Number): Promise<Note[]> {
 
 export async function postNote(db:Client, id:Number, newNote: NewNote): Promise<Note | null>{ //I do NOT want null here, need safeguards
   try{
+    console.log(`HERE HERE HERE ${newNote.title} BEFORE BEFORE BEFORE`)
     const response = await db.query("INSERT INTO notes (title, content, user_id) VALUES ($1, $2, $3) RETURNING *", [newNote.title, newNote.content, id])
     return response.rows[0]
   } catch (err){

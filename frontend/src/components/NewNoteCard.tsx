@@ -17,6 +17,7 @@ export default function NewNoteCard({ userData, notes, setNotes }: NewNoteCardPr
     const newNote: NewNote = { title: noteTitle, content: noteContent };
     const newNoteString: string = JSON.stringify(newNote);
     try {
+      console.log(`${apiBase}/${userData.id}/notes`) //debug line
       const response = await fetch(`${apiBase}/${userData.id}/notes`, {
         method: "POST",
         headers: {
