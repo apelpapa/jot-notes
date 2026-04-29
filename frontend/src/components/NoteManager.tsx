@@ -5,7 +5,6 @@ import NoteCard from "./NoteCard";
 import NewNoteCard from "./NewNoteCard";
 import FixedFooter from "./FixedFooter";
 import Header from "./Header";
-import ModalContainer from "./ModalContainer";
 import OnLoadModal from "./OnLoadModal";
 
 //const localStorageKey = "saveData";
