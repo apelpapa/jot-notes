@@ -4,6 +4,10 @@ import react from "@vitejs/plugin-react-swc";
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
+  build: {
+    outDir: "/var/www/jot-notes.app/public",
+    emptyOutDir: true,
+  },
   server: {
     proxy: {
       "/api": {
