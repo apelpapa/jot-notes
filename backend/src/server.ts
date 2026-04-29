@@ -2,8 +2,8 @@ import express, { json, Request } from 'express'
 import env from 'dotenv'
 import pg from 'pg'
 import bcrypt from 'bcryptjs'
-import userRetrieval from './userRetrieval'
-import { deleteNote, noteRetrieval, postNote } from './noteManager'
+import userRetrieval from './userRetrieval.js'
+import { deleteNote, noteRetrieval, postNote } from './noteManager.js'
 
 interface UserParams{
     userId: string
