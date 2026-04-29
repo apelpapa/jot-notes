@@ -5,6 +5,8 @@ import NoteCard from "./NoteCard";
 import NewNoteCard from "./NewNoteCard";
 import FixedFooter from "./FixedFooter";
 import Header from "./Header";
+import ModalContainer from "./ModalContainer";
+import OnLoadModal from "./OnLoadModal";
 
 //const localStorageKey = "saveData";
 export const apiBase = "/api";
@@ -17,7 +19,7 @@ export interface Note {
 
 export interface NewNote {
   title: string;
-  content?: string
+  content?: string;
 }
 
 export interface UserData {
@@ -52,10 +54,12 @@ async function loadUser(): Promise<UserData> {
   try {
     const userRes = await fetch(apiBase + "/users");
     if (!userRes.ok) {
-      console.log("could not access user table, returning default user") //debug line
+      console.log("could not access user table, returning default user"); //debug line
       return userData;
     }
-    userData = userRes.headers.get("content-type") ? await userRes.json() : defaultUserData;
+    userData = userRes.headers.get("content-type")
+      ? await userRes.json()
+      : defaultUserData;
   } catch (err) {
     console.error(err);
     userData = defaultUserData;
@@ -90,36 +94,30 @@ export default function NoteManager() {
 
   return (
     <>
+    <OnLoadModal/>
       <Header userData={userData} />
       <div className="w-11/12 mx-auto">
         <div className="mt-2">
-          <NewNoteCard
-            userData={userData}
-            notes={notes}
-            setNotes={setNotes}
-          />
+          <NewNoteCard userData={userData} notes={notes} setNotes={setNotes} />
         </div>
         <div className="flex flex-wrap gap-2 mt-2 mb-24">
           {notes.map((note) => {
             return (
               <NoteCard
-              key={note.id}
-              title={note.title}
-              content={note.content}
-              noteId={note.id}
-              userId={userData.id}
-              notes={notes}
-              setNotes={setNotes}
+                key={note.id}
+                title={note.title}
+                content={note.content}
+                noteId={note.id}
+                userId={userData.id}
+                notes={notes}
+                setNotes={setNotes}
               />
             );
           })}
         </div>
       </div>
-      
-      <FixedFooter
-      userData={userData}
-      setUserData={setUserData}
-      /> 
+
+      <FixedFooter userData={userData} setUserData={setUserData} />
     </>
   );
 }
