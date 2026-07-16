@@ -1,73 +1,63 @@
-import { useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { apiBase, type NewNote, type Note, type UserData } from "./NoteManager";
+import { useState } from "react";
+import type { NewNote } from "./NoteManager";
 
 interface NewNoteCardProps {
-  userData: UserData;
-  setNotes: Dispatch<SetStateAction<Note[]>>;
-  onServiceUnavailable: () => void;
+  onCreate: (note: NewNote) => Promise<boolean>;
+  submitLabel: string;
+  disabled?: boolean;
 }
 
-export default function NewNoteCard({ userData, setNotes, onServiceUnavailable }: NewNoteCardProps) {
-  const [noteTitle, setNoteTitle] = useState<string>("");
-  const [noteContent, setNoteContent] = useState<string>("");
-  const formRef = useRef<HTMLFormElement>(null);
+export default function NewNoteCard({ onCreate, submitLabel, disabled = false }: NewNoteCardProps) {
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteContent, setNoteContent] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>): Promise<void> {
-    e.preventDefault();
-    const newNote: NewNote = { title: noteTitle, content: noteContent };
-    const newNoteString: string = JSON.stringify(newNote);
+  async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setSaving(true);
+
     try {
-      console.log(`${apiBase}/${userData.id}/notes`) //debug line
-      const response = await fetch(`${apiBase}/${userData.id}/notes`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: newNoteString,
-      });
-      if (response.status === 503) {
-        onServiceUnavailable();
-        return;
+      const saved = await onCreate({ title: noteTitle.trim(), content: noteContent });
+      if (saved) {
+        setNoteTitle("");
+        setNoteContent("");
       }
-      if (!response.ok) {
-        console.error("Could Not Save Note, server responded with", response.status); // Some kind of handler to indicate that this note was not saved, need to manually save
-        return;
-      }
-      const savedNote: Note = await response.json();
-      if (!savedNote || savedNote.id == null) {
-        console.error("Could Not Save Note, invalid response from server");
-        return;
-      }
-      setNotes((currentNotes) => currentNotes.concat(savedNote));
-      setNoteTitle("");
-      setNoteContent("");
-      formRef.current?.reset();
-    } catch (err) {
-      console.error("Could Not Save Note, Notes Will Be Lost", err); // Some kind of handler to indicate that this note was not saved, need to manually save
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
-    <div className="card bg-base-300 max-w-96 shadow-sm">
+    <div className="card bg-base-300 w-full max-w-lg shadow-sm">
       <div className="card-body">
-        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col justify-center items-center">
-          <input
-            type="text"
-            className="input mb-2 validator"
-            value={noteTitle}
-            placeholder="Title"
-            onChange={(e) => setNoteTitle(e.target.value)}
-            required
-          />
-          <textarea
-            className="textarea mb-2"
-            value={noteContent}
-            placeholder="Notes (Optional)"
-            onChange={(e) => setNoteContent(e.target.value)}
-          />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <label className="form-control">
+            <span className="label-text mb-1">Title</span>
+            <input
+              type="text"
+              className="input input-bordered w-full"
+              value={noteTitle}
+              onChange={(event) => setNoteTitle(event.target.value)}
+              maxLength={200}
+              required
+              disabled={disabled || saving}
+            />
+          </label>
+          <label className="form-control">
+            <span className="label-text mb-1">Note</span>
+            <textarea
+              className="textarea textarea-bordered w-full min-h-28"
+              value={noteContent}
+              onChange={(event) => setNoteContent(event.target.value)}
+              maxLength={20_000}
+              placeholder="Optional"
+              disabled={disabled || saving}
+            />
+          </label>
           <div className="card-actions justify-end">
-            <button type="submit" className="btn btn-primary mb-0">
-              Jot
+            <button type="submit" className="btn btn-primary" disabled={disabled || saving}>
+              {saving && <span className="loading loading-spinner loading-sm" />}
+              {submitLabel}
             </button>
           </div>
         </form>

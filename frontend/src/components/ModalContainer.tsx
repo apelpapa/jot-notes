@@ -93,7 +93,7 @@ export default function ModalContainer({ children, ariaLabel }: ModalContainerPr
                 aria-label={ariaLabel}
                 tabIndex={-1}
                 onKeyDown={handleKeyDown}
-                className="max-w-11/12 max-h-2/3 bg-base-200 flex justify-center items-center"
+                className="max-w-11/12 max-h-[90vh] overflow-y-auto rounded-box bg-base-200 flex justify-center items-center"
             >
                 {children}
             </div>

@@ -1,47 +1,52 @@
-//see comments
-
-import { useEffect, useState } from "react";
-import type { UserData } from "./NoteManager";
+import { useEffect } from "react";
 
 interface FixedFooterProps {
-  userData: UserData;
-  setUserData: (userData: UserData) => void;
+  theme: string;
+  onToggleTheme: () => void;
+  showLocalStorageSetting: boolean;
+  persistLocalNotes: boolean;
+  onPersistenceChange: (enabled: boolean) => void;
 }
 
-export default function FixedFooter({ userData, setUserData }: FixedFooterProps) {
-  const [theme, setTheme] = useState(userData?.themePreference);
-
-  //useState only reads its initial value once, so sync when the loaded user's preference arrives
-  useEffect(() => {
-    if (userData?.themePreference) {
-      setTheme(userData.themePreference);
-    }
-  }, [userData?.themePreference]);
-
+export default function FixedFooter({
+  theme,
+  onToggleTheme,
+  showLocalStorageSetting,
+  persistLocalNotes,
+  onPersistenceChange,
+}: FixedFooterProps) {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  function toggleTheme() { // need to put this change in db
-    const newTheme = theme === "light" ? "dark" : "light";
-    const updatedUser: UserData = { ...userData, themePreference: newTheme };
-    console.log(updatedUser)
-    setUserData(updatedUser);
-    setTheme(newTheme);
-  }
-
   return (
-    <div className="fixed bg-base-100 bottom-0 left-0 p-3 w-full grid grid-cols-3 footer border-t-2 max-h-24">
-      <label className="swap swap-rotate justify-self-start self-center">
-        <input type="checkbox" checked={theme === "dark"} onChange={toggleTheme} />
-        <svg className="swap-on h-10 w-10 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <footer className="fixed bg-base-100 bottom-0 left-0 p-3 w-full flex items-center justify-between gap-4 border-t-2 min-h-20 z-20">
+      <label className="swap swap-rotate" aria-label="Toggle color theme">
+        <input type="checkbox" checked={theme === "dark"} onChange={onToggleTheme} />
+        <svg className="swap-on h-9 w-9 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
           <path d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z" />
         </svg>
-        <svg className="swap-off h-10 w-10 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <svg className="swap-off h-9 w-9 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
           <path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" />
         </svg>
       </label>
-      <div className="self-center justify-self-center"></div>
-    </div>
+
+      {showLocalStorageSetting && (
+        <label className="flex items-center gap-3 text-sm sm:text-base cursor-pointer text-right">
+          <span>
+            <span className="block font-medium">Keep notes on this device</span>
+            <span className="block text-xs text-base-content/60">
+              {persistLocalNotes ? "Saved between visits" : "This browser session only"}
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="toggle toggle-primary"
+            checked={persistLocalNotes}
+            onChange={(event) => onPersistenceChange(event.target.checked)}
+          />
+        </label>
+      )}
+    </footer>
   );
 }

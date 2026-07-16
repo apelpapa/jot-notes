@@ -3,7 +3,22 @@ import type { Pool } from "pg";
 import type { NewNote, Note } from "./userRetrieval.js";
 
 export async function noteRetrieval(db: Pool, id: number): Promise<Note[]> {
-  const response = await db.query<Note>("SELECT * FROM notes WHERE user_id = $1", [id]);
+  const response = await db.query<Note>(
+    "SELECT id, title, content FROM notes WHERE user_id = $1 ORDER BY id DESC",
+    [id],
+  );
+  return response.rows;
+}
+
+export async function globalNoteRetrieval(db: Pool): Promise<Note[]> {
+  const response = await db.query<Note>(
+    `SELECT notes.id, notes.title, notes.content
+     FROM notes
+     INNER JOIN users ON users.id = notes.user_id
+     WHERE users.auth_user_id IS NOT NULL
+     ORDER BY notes.id DESC
+     LIMIT 100`,
+  );
   return response.rows;
 }
 
