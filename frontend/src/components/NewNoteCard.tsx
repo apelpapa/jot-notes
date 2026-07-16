@@ -25,14 +25,22 @@ export default function NewNoteCard({ userData, notes, setNotes }: NewNoteCardPr
         },
         body: newNoteString,
       });
-      const newNote: Note = await response.json();
-      setNotes(notes.concat(newNote))
+      if (!response.ok) {
+        console.error("Could Not Save Note, server responded with", response.status); // Some kind of handler to indicate that this note was not saved, need to manually save
+        return;
+      }
+      const savedNote: Note = await response.json();
+      if (!savedNote || savedNote.id == null) {
+        console.error("Could Not Save Note, invalid response from server");
+        return;
+      }
+      setNotes(notes.concat(savedNote));
+      setNoteTitle("");
+      setNoteContent("");
+      formRef.current?.reset();
     } catch (err) {
       console.error("Could Not Save Note, Notes Will Be Lost", err); // Some kind of handler to indicate that this note was not saved, need to manually save
     }
-    setNoteTitle("");
-    setNoteContent("");
-    formRef.current?.reset();
   }
 
   return (

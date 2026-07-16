@@ -39,6 +39,9 @@ app.get(apiURL+'/users', async (req, res) => {
 
 app.get(apiURL+'/:userId/notes', async (req: Request<UserParams>, res)=>{
     const id = parseInt(req.params.userId)
+    if(Number.isNaN(id)){
+        return res.status(400).json({ error: 'Invalid user id' })
+    }
     const noteData = await noteRetrieval(db, id)
     res.send(noteData)
 })
@@ -49,13 +52,26 @@ app.post(apiURL+'/user', async (req, res) => {
 
 app.post(apiURL+'/:userId/notes', async (req: Request<UserParams>, res)=>{
     const id = parseInt(req.params.userId)
-    const response = await postNote(db, id, req.body)
-    res.send(response)
+    if(Number.isNaN(id)){
+        return res.status(400).json({ error: 'Invalid user id' })
+    }
+    const { title, content } = req.body ?? {}
+    if(typeof title !== 'string' || title.trim() === ''){
+        return res.status(400).json({ error: 'Title is required' })
+    }
+    const response = await postNote(db, id, { title, content })
+    if(!response){
+        return res.status(500).json({ error: 'Could not save note' })
+    }
+    res.status(201).json(response)
 })
 
 app.delete(apiURL+'/:userId/:noteId', async (req: Request<UserParams>, res)=>{
     const userId = parseInt(req.params.userId)
     const noteId = parseInt(req.params.noteId)
+    if(Number.isNaN(userId) || Number.isNaN(noteId)){
+        return res.status(400).json({ error: 'Invalid user or note id' })
+    }
     const response = await deleteNote(db, userId, noteId)
     if(!response){
         return res.json(-1)

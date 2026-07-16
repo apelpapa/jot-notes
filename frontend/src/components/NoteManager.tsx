@@ -57,7 +57,7 @@ async function loadUser(): Promise<UserData> {
       return userData;
     }
     userData = userRes.headers.get("content-type")
-      ? await userRes.json()
+      ? (await userRes.json()) ?? defaultUserData
       : defaultUserData;
   } catch (err) {
     console.error(err);

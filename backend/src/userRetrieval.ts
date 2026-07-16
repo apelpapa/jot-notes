@@ -1,4 +1,4 @@
-import { Client } from "../node_modules/@types/pg";
+import type { Client } from "pg";
 
 export interface Note {
   id: string;
@@ -24,7 +24,7 @@ interface UserData {
 //Right now it is just pulling a set user. Update Accordingly
 async function getUserInfo(db: Client): Promise<UserData | null> {
   try {
-    const response = await db.query("SELECT * FROM users WHERE username = $1", ["apelpapa"]);
+    const response = await db.query("SELECT * FROM users WHERE username = $1", ["GuestInDB"]);
     const rowCount = response.rowCount ?? 0;
     if (rowCount > 1) {
       console.error("More than one user matched, major error!");
@@ -40,8 +40,8 @@ async function getUserInfo(db: Client): Promise<UserData | null> {
         lastName: resSaveData.last_name ?? "",
         avatarUrl: resSaveData.avatar ?? "",
         email: resSaveData.email,
-        themePreference: resSaveData.themePreference,
-        autoSave: resSaveData.autosave,
+        themePreference: resSaveData.theme_preference ?? undefined,
+        autoSave: resSaveData.autosave ?? false,
       };
       return saveData;
     }

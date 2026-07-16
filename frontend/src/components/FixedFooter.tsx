@@ -11,6 +11,13 @@ interface FixedFooterProps {
 export default function FixedFooter({ userData, setUserData }: FixedFooterProps) {
   const [theme, setTheme] = useState(userData?.themePreference);
 
+  //useState only reads its initial value once, so sync when the loaded user's preference arrives
+  useEffect(() => {
+    if (userData?.themePreference) {
+      setTheme(userData.themePreference);
+    }
+  }, [userData?.themePreference]);
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
