@@ -1,7 +1,7 @@
-import type { Client } from "pg";
+import type { Pool } from "pg";
 
 export interface Note {
-  id: string;
+  id: number;
   title: string;
   content: string;
 }
@@ -22,44 +22,29 @@ interface UserData {
   email: string;
 }
 //Right now it is just pulling a set user. Update Accordingly
-async function getUserInfo(db: Client): Promise<UserData | null> {
-  try {
-    const response = await db.query("SELECT * FROM users WHERE username = $1", ["GuestInDB"]);
-    const rowCount = response.rowCount ?? 0;
-    if (rowCount > 1) {
-      console.error("More than one user matched, major error!");
-      return null;
-    } else if (response.rowCount === 0) {
-      return null;
-    } else {
-      const resSaveData = response.rows[0];
-      const saveData: UserData = {
-        id: resSaveData.id,
-        username: resSaveData.username,
-        firstName: resSaveData.first_name,
-        lastName: resSaveData.last_name ?? "",
-        avatarUrl: resSaveData.avatar ?? "",
-        email: resSaveData.email,
-        themePreference: resSaveData.theme_preference ?? undefined,
-        autoSave: resSaveData.autosave ?? false,
-      };
-      return saveData;
-    }
-  } catch (err) {
-    console.error("Could not reach user table", err);
+async function getUserInfo(db: Pool): Promise<UserData | null> {
+  const response = await db.query("SELECT * FROM users WHERE username = $1", ["GuestInDB"]);
+  const rowCount = response.rowCount ?? 0;
+  if (rowCount > 1) {
+    throw new Error("More than one guest user matched");
+  }
+  if (rowCount === 0) {
     return null;
   }
+
+  const resSaveData = response.rows[0];
+  return {
+    id: Number(resSaveData.id),
+    username: resSaveData.username,
+    firstName: resSaveData.first_name,
+    lastName: resSaveData.last_name ?? "",
+    avatarUrl: resSaveData.avatar ?? "",
+    email: resSaveData.email,
+    themePreference: resSaveData.theme_preference ?? undefined,
+    autoSave: resSaveData.autosave ?? false,
+  };
 }
 
-export default async function userRetrieval(db: Client): Promise<UserData | null> {
-  try {
-    const userData: UserData | null = await getUserInfo(db);
-    if (!userData) {
-      return null;
-    }
-    return userData;
-  } catch (err) {
-    console.error("Error retrieving user data" + err);
-    return null;
-  }
+export default async function userRetrieval(db: Pool): Promise<UserData | null> {
+  return getUserInfo(db);
 }

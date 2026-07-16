@@ -1,13 +1,13 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { apiBase, type NewNote, type Note, type UserData } from "./NoteManager";
 
 interface NewNoteCardProps {
   userData: UserData;
-  notes: Note[];
-  setNotes: (note: Note[]) => void;
+  setNotes: Dispatch<SetStateAction<Note[]>>;
+  onServiceUnavailable: () => void;
 }
 
-export default function NewNoteCard({ userData, notes, setNotes }: NewNoteCardProps) {
+export default function NewNoteCard({ userData, setNotes, onServiceUnavailable }: NewNoteCardProps) {
   const [noteTitle, setNoteTitle] = useState<string>("");
   const [noteContent, setNoteContent] = useState<string>("");
   const formRef = useRef<HTMLFormElement>(null);
@@ -25,6 +25,10 @@ export default function NewNoteCard({ userData, notes, setNotes }: NewNoteCardPr
         },
         body: newNoteString,
       });
+      if (response.status === 503) {
+        onServiceUnavailable();
+        return;
+      }
       if (!response.ok) {
         console.error("Could Not Save Note, server responded with", response.status); // Some kind of handler to indicate that this note was not saved, need to manually save
         return;
@@ -34,7 +38,7 @@ export default function NewNoteCard({ userData, notes, setNotes }: NewNoteCardPr
         console.error("Could Not Save Note, invalid response from server");
         return;
       }
-      setNotes(notes.concat(savedNote));
+      setNotes((currentNotes) => currentNotes.concat(savedNote));
       setNoteTitle("");
       setNoteContent("");
       formRef.current?.reset();

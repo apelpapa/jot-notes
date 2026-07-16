@@ -78,7 +78,7 @@ export default function Header({ userData }: HeaderProps) {
           </button>
         </div>
       </div>
-      {userModal && createPortal(<ModalContainer><UserModal onClose={() => setUserModal(false)}  /></ModalContainer>, document.body)}
+      {userModal && createPortal(<ModalContainer ariaLabel="User information"><UserModal onClose={() => setUserModal(false)}  /></ModalContainer>, document.body)}
     </>
   );
 }

@@ -1,7 +1,6 @@
-import express, { json, Request } from 'express'
+import express, { json, Request, type ErrorRequestHandler, type Response } from 'express'
 import env from 'dotenv'
 import pg from 'pg'
-import bcrypt from 'bcryptjs'
 import userRetrieval from './userRetrieval.js'
 import { deleteNote, noteRetrieval, postNote } from './noteManager.js'
 
@@ -21,20 +20,34 @@ const port: number = parseInt(process.env.PORT || '3000')
 
 //init express
 const app = express()
+app.disable('x-powered-by')
 app.use(json())
 
-//init pg database and connect
-const db = new pg.Client
+// A pool replaces broken connections after a database restart or network interruption.
+const db = new pg.Pool()
+db.on('error', (err) => {
+    console.error('Unexpected PG pool error', err)
+})
+
 try {
-    await db.connect()
+    await db.query('SELECT 1')
 }
 catch (err) {
     console.error('PG Connection Error', err)
 }
 
+const serviceUnavailable = (res: Response) => {
+    return res.status(503).json({ error: 'Service temporarily unavailable' })
+}
+
 app.get(apiURL+'/users', async (req, res) => {
-    const userData = await userRetrieval(db)
-    res.send(userData)
+    try {
+        const userData = await userRetrieval(db)
+        return res.send(userData)
+    } catch (err) {
+        console.error('Could not retrieve user data', err)
+        return serviceUnavailable(res)
+    }
 })
 
 app.get(apiURL+'/:userId/notes', async (req: Request<UserParams>, res)=>{
@@ -42,12 +55,17 @@ app.get(apiURL+'/:userId/notes', async (req: Request<UserParams>, res)=>{
     if(Number.isNaN(id)){
         return res.status(400).json({ error: 'Invalid user id' })
     }
-    const noteData = await noteRetrieval(db, id)
-    res.send(noteData)
+    try {
+        const noteData = await noteRetrieval(db, id)
+        return res.send(noteData)
+    } catch (err) {
+        console.error('Could not retrieve notes', err)
+        return serviceUnavailable(res)
+    }
 })
 
 app.post(apiURL+'/user', async (req, res) => {
-    //console.log(req.body)
+    return res.status(501).json({ error: 'Not implemented' })
 })
 
 app.post(apiURL+'/:userId/notes', async (req: Request<UserParams>, res)=>{
@@ -59,11 +77,16 @@ app.post(apiURL+'/:userId/notes', async (req: Request<UserParams>, res)=>{
     if(typeof title !== 'string' || title.trim() === ''){
         return res.status(400).json({ error: 'Title is required' })
     }
-    const response = await postNote(db, id, { title, content })
-    if(!response){
-        return res.status(500).json({ error: 'Could not save note' })
+    if(content != null && typeof content !== 'string'){
+        return res.status(400).json({ error: 'Content must be text' })
     }
-    res.status(201).json(response)
+    try {
+        const response = await postNote(db, id, { title, content })
+        return res.status(201).json(response)
+    } catch (err) {
+        console.error('Could not save note', err)
+        return serviceUnavailable(res)
+    }
 })
 
 app.delete(apiURL+'/:userId/:noteId', async (req: Request<UserParams>, res)=>{
@@ -72,15 +95,34 @@ app.delete(apiURL+'/:userId/:noteId', async (req: Request<UserParams>, res)=>{
     if(Number.isNaN(userId) || Number.isNaN(noteId)){
         return res.status(400).json({ error: 'Invalid user or note id' })
     }
-    const response = await deleteNote(db, userId, noteId)
-    if(!response){
-        return res.json(-1)
-    } else {
+    try {
+        const response = await deleteNote(db, userId, noteId)
+        if(response == null){
+            return res.status(404).json({ error: 'Note not found' })
+        }
         return res.json(response)
+    } catch (err) {
+        console.error('Could not delete note', err)
+        return serviceUnavailable(res)
     }
 })
 
+const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+    console.error('Unhandled request error', err)
+    const status = typeof err === 'object' && err !== null && 'status' in err
+        ? Number(err.status)
+        : 500
+
+    if(status === 400){
+        res.status(400).json({ error: 'Invalid request' })
+        return
+    }
+    res.status(500).json({ error: 'Internal server error' })
+}
+
+app.use(errorHandler)
+
 //Establish Port
-app.listen(port, () => {
-    console.log(`Find Us At ${port}`)
+app.listen(port, '127.0.0.1', () => {
+    console.log(`Jot Notes API listening on 127.0.0.1:${port}`)
 })

@@ -6,6 +6,7 @@ import NewNoteCard from "./NewNoteCard";
 import FixedFooter from "./FixedFooter";
 import Header from "./Header";
 import OnLoadModal from "./OnLoadModal";
+import ServiceUnavailable from "./ServiceUnavailable";
 
 //const localStorageKey = "saveData";
 export const apiBase = "/api";
@@ -44,52 +45,72 @@ const defaultUserData: UserData = {
   autoSave: false,
 };
 
+class ApiUnavailableError extends Error {}
+
 //async function saveUser(userData: UserData): Promise<void> {}
 
 //async function saveNote(newNote: Note): Promise<void> {}
 
 async function loadUser(): Promise<UserData> {
-  let userData: UserData = defaultUserData;
-  try {
-    const userRes = await fetch(apiBase + "/users");
-    if (!userRes.ok) {
-      console.log("could not access user table, returning default user"); //debug line
-      return userData;
-    }
-    userData = userRes.headers.get("content-type")
-      ? (await userRes.json()) ?? defaultUserData
-      : defaultUserData;
-  } catch (err) {
-    console.error(err);
-    userData = defaultUserData;
+  const userRes = await fetch(apiBase + "/users");
+  if (userRes.status === 503) {
+    throw new ApiUnavailableError();
   }
-  //console.log(userData) //debug line
-  return userData;
+  if (!userRes.ok) {
+    throw new Error(`Could not load user (${userRes.status})`);
+  }
+  return (await userRes.json()) ?? defaultUserData;
 }
 
-async function loadNotes(id: Number): Promise<Note[]> {
-  try {
-    const notesRes = await fetch(`${apiBase}/${id}/notes`);
-    return notesRes.json();
-  } catch (err) {
-    console.error(err);
-    return [];
+async function loadNotes(id: number): Promise<Note[]> {
+  const notesRes = await fetch(`${apiBase}/${id}/notes`);
+  if (notesRes.status === 503) {
+    throw new ApiUnavailableError();
   }
+  if (!notesRes.ok) {
+    throw new Error(`Could not load notes (${notesRes.status})`);
+  }
+  const noteData: unknown = await notesRes.json();
+  if (!Array.isArray(noteData)) {
+    throw new Error("Invalid notes response");
+  }
+  return noteData as Note[];
 }
 
 export default function NoteManager() {
   const [userData, setUserData] = useState<UserData>(defaultUserData);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [appStatus, setAppStatus] = useState<"loading" | "ready" | "unavailable">("loading");
 
   useEffect(() => {
     async function loadData() {
-      const dbUser = await loadUser();
-      const dbNotes = await loadNotes(dbUser.id);
-      setUserData(dbUser);
-      setNotes(dbNotes);
+      try {
+        const dbUser = await loadUser();
+        const dbNotes = await loadNotes(dbUser.id);
+        setUserData(dbUser);
+        setNotes(dbNotes);
+        setAppStatus("ready");
+      } catch (err) {
+        console.error("Could not load Jot Notes", err);
+        setAppStatus("unavailable");
+      }
     }
     loadData();
   }, []);
+
+  if (appStatus === "loading") {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-base-200">
+        <span className="loading loading-spinner loading-lg" aria-label="Loading Jot Notes" />
+      </main>
+    );
+  }
+
+  if (appStatus === "unavailable") {
+    return <ServiceUnavailable />;
+  }
+
+  const showServiceUnavailable = () => setAppStatus("unavailable");
 
   return (
     <>
@@ -97,7 +118,7 @@ export default function NoteManager() {
       <Header userData={userData} />
       <div className="w-11/12 mx-auto">
         <div className="mt-2">
-          <NewNoteCard userData={userData} notes={notes} setNotes={setNotes} />
+          <NewNoteCard userData={userData} setNotes={setNotes} onServiceUnavailable={showServiceUnavailable} />
         </div>
         <div className="flex flex-wrap gap-2 mt-2 mb-24">
           {notes.map((note) => {
@@ -108,8 +129,8 @@ export default function NoteManager() {
                 content={note.content}
                 noteId={note.id}
                 userId={userData.id}
-                notes={notes}
                 setNotes={setNotes}
+                onServiceUnavailable={showServiceUnavailable}
               />
             );
           })}

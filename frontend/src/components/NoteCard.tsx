@@ -1,4 +1,5 @@
 import { FaTrash } from "react-icons/fa";
+import type { Dispatch, SetStateAction } from "react";
 import { apiBase, type Note } from "./NoteManager";
 
 interface NoteCardProps {
@@ -6,23 +7,28 @@ interface NoteCardProps {
   title: string;
   content?: string;
   userId: number;
-  notes: Note[]
-  setNotes: (notes:Note[]) => void
+  setNotes: Dispatch<SetStateAction<Note[]>>;
+  onServiceUnavailable: () => void;
 
 }
 
-export default function NoteCard({ noteId, title, content, userId, notes, setNotes }: NoteCardProps) {
+export default function NoteCard({ noteId, title, content, userId, setNotes, onServiceUnavailable }: NoteCardProps) {
   async function handleDelete(noteId: number, userId: number): Promise<void> {
     try {
       const response = await fetch(`${apiBase}/${userId}/${noteId}`, {
         method: "DELETE",
       });
+      if (response.status === 503) {
+        onServiceUnavailable();
+        return;
+      }
+      if (!response.ok) {
+        console.error("Could not delete note, server responded with", response.status);
+        return;
+      }
       const deletedNoteId = await response.json()
-      if(deletedNoteId >=0){
-        console.log(notes)
-        const newNoteArray = notes.filter(note=> note.id !== deletedNoteId)
-        console.log(newNoteArray)
-        setNotes(newNoteArray)
+      if(typeof deletedNoteId === "number"){
+        setNotes((currentNotes) => currentNotes.filter((note) => note.id !== deletedNoteId));
       }
     } catch (err) {
       console.error("Error on deleting in db", err);

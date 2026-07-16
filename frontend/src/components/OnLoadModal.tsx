@@ -8,7 +8,7 @@ export default function OnLoadModal() {
     <>
       {onLoadModal &&
         createPortal(
-          <ModalContainer>
+          <ModalContainer ariaLabel="Alpha testing notice">
             <div className="bg-100 p-3 max-w-100">
               <p>
                 This app is currently in alpha testing. Everyone is
