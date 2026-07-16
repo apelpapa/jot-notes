@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import ModalContainer from "./ModalContainer";
+import InstallAppButton from "./InstallAppButton";
 import UserModal from "./UserModel";
 import type { UserData } from "./NoteManager";
 
@@ -73,6 +74,7 @@ export default function Header({ userData }: HeaderProps) {
           </ul>
         </div>
         <div className="navbar-end">
+          <InstallAppButton />
           <button onClick={() => setUserModal(true)} className="btn">
             {userData.firstName}
           </button>
