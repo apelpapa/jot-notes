@@ -2,8 +2,8 @@ import express, { json, Request, type ErrorRequestHandler, type Response } from 
 import env from "dotenv";
 import pg from "pg";
 import { createAuthMiddleware } from "./auth.js";
-import userRetrieval from "./userRetrieval.js";
-import { deleteNote, globalNoteRetrieval, noteRetrieval, postNote } from "./noteManager.js";
+import userRetrieval, { type NewNote } from "./userRetrieval.js";
+import { deleteNote, globalNoteRetrieval, noteRetrieval, postGlobalNote, postNote } from "./noteManager.js";
 
 interface NoteParams {
   noteId: string;
@@ -40,6 +40,27 @@ const serviceUnavailable = (res: Response) => {
   return res.status(503).json({ error: "Service temporarily unavailable" });
 };
 
+function readNewNote(req: Request, res: Response): NewNote | null {
+  const { title, content } = req.body ?? {};
+  if (typeof title !== "string" || title.trim() === "") {
+    res.status(400).json({ error: "Title is required" });
+    return null;
+  }
+  if (title.length > 200) {
+    res.status(400).json({ error: "Title is too long" });
+    return null;
+  }
+  if (content != null && typeof content !== "string") {
+    res.status(400).json({ error: "Content must be text" });
+    return null;
+  }
+  if (typeof content === "string" && content.length > 20_000) {
+    res.status(400).json({ error: "Content is too long" });
+    return null;
+  }
+  return { title: title.trim(), content };
+}
+
 app.get(`${apiURL}/notes/global`, async (_req, res) => {
   try {
     const noteData = await globalNoteRetrieval(db);
@@ -74,24 +95,27 @@ app.get(`${apiURL}/notes`, async (req, res) => {
   }
 });
 
-app.post(`${apiURL}/notes`, async (req, res) => {
-  const { title, content } = req.body ?? {};
-  if (typeof title !== "string" || title.trim() === "") {
-    return res.status(400).json({ error: "Title is required" });
-  }
-  if (title.length > 200) {
-    return res.status(400).json({ error: "Title is too long" });
-  }
-  if (content != null && typeof content !== "string") {
-    return res.status(400).json({ error: "Content must be text" });
-  }
-  if (typeof content === "string" && content.length > 20_000) {
-    return res.status(400).json({ error: "Content is too long" });
-  }
+app.post(`${apiURL}/notes/global`, async (req, res) => {
+  const newNote = readNewNote(req, res);
+  if (!newNote) return;
 
   try {
     const userData = await userRetrieval(db, req.authUser!);
-    const response = await postNote(db, userData.id, { title: title.trim(), content });
+    const response = await postGlobalNote(db, userData.id, newNote);
+    return res.status(201).json(response);
+  } catch (error) {
+    console.error("Could not publish Global Note", error);
+    return serviceUnavailable(res);
+  }
+});
+
+app.post(`${apiURL}/notes`, async (req, res) => {
+  const newNote = readNewNote(req, res);
+  if (!newNote) return;
+
+  try {
+    const userData = await userRetrieval(db, req.authUser!);
+    const response = await postNote(db, userData.id, newNote);
     return res.status(201).json(response);
   } catch (error) {
     console.error("Could not save note", error);

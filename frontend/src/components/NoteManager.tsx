@@ -42,13 +42,33 @@ interface NoteManagerProps {
 
 type LoadStatus = "idle" | "loading" | "ready" | "unavailable";
 
-function isNote(value: unknown): value is Note {
-  if (typeof value !== "object" || value === null) return false;
+function normalizeNote(value: unknown): Note | null {
+  if (typeof value !== "object" || value === null) return null;
   const candidate = value as Record<string, unknown>;
-  return Number.isFinite(candidate.id)
-    && typeof candidate.title === "string"
-    && candidate.title.trim().length > 0
-    && (candidate.content === undefined || candidate.content === null || typeof candidate.content === "string");
+  const id = typeof candidate.id === "number"
+    ? candidate.id
+    : typeof candidate.id === "string" && /^\d+$/.test(candidate.id)
+      ? Number(candidate.id)
+      : Number.NaN;
+
+  if (!Number.isSafeInteger(id) || id < 1) return null;
+  if (typeof candidate.title !== "string" || candidate.title.trim().length === 0) return null;
+  if (candidate.content !== undefined && candidate.content !== null && typeof candidate.content !== "string") {
+    return null;
+  }
+
+  return {
+    id,
+    title: candidate.title.slice(0, 200),
+    content: typeof candidate.content === "string" ? candidate.content.slice(0, 20_000) : undefined,
+  };
+}
+
+function normalizeNotes(values: unknown[]): Note[] {
+  return values.flatMap((value) => {
+    const note = normalizeNote(value);
+    return note ? [note] : [];
+  });
 }
 
 function readNotes(storage: Storage, key: string): Note[] {
@@ -57,11 +77,7 @@ function readNotes(storage: Storage, key: string): Note[] {
     if (!storedValue) return [];
     const parsed: unknown = JSON.parse(storedValue);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isNote).map((note) => ({
-      id: note.id,
-      title: note.title.slice(0, 200),
-      content: note.content?.slice(0, 20_000),
-    }));
+    return normalizeNotes(parsed);
   } catch (error) {
     console.error("Could not read local notes", error);
     return [];
@@ -106,7 +122,7 @@ async function loadAccountNotes(accessToken: string): Promise<Note[]> {
 
   const noteData: unknown = await response.json();
   if (!Array.isArray(noteData)) throw new Error("Invalid notes response");
-  return noteData.filter(isNote);
+  return normalizeNotes(noteData);
 }
 
 export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
@@ -152,10 +168,10 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
     async function loadAccount() {
       setAccountStatus("loading");
       try {
-        const [user, notes] = await Promise.all([
-          loadUser(accessToken),
-          loadAccountNotes(accessToken),
-        ]);
+        // Finish provisioning a new profile before asking the notes endpoint
+        // to look it up as well.
+        const user = await loadUser(accessToken);
+        const notes = await loadAccountNotes(accessToken);
         if (!active) return;
         setAccountUser(user);
         setAccountNotes(notes);
@@ -187,7 +203,7 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
         if (!response.ok) throw new Error(`Could not load global notes (${response.status})`);
         const noteData: unknown = await response.json();
         if (!Array.isArray(noteData)) throw new Error("Invalid global notes response");
-        setGlobalNotes(noteData.filter(isNote));
+        setGlobalNotes(normalizeNotes(noteData));
         setGlobalStatus("ready");
       } catch (error) {
         if (abortController.signal.aborted) return;
@@ -240,8 +256,8 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
         return false;
       }
       if (!response.ok) throw new Error(`Could not save note (${response.status})`);
-      const savedNote: unknown = await response.json();
-      if (!isNote(savedNote)) throw new Error("Invalid saved note response");
+      const savedNote = normalizeNote(await response.json());
+      if (!savedNote) throw new Error("Invalid saved note response");
       setAccountNotes((currentNotes) => [savedNote, ...currentNotes]);
       return true;
     } catch (error) {
@@ -250,6 +266,35 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
         return false;
       }
       console.error("Could not save account note", error);
+      return false;
+    }
+  };
+
+  const createGlobalNote = async (newNote: NewNote): Promise<boolean> => {
+    if (!session || !newNote.title) return false;
+
+    try {
+      const response = await authenticatedFetch(session.access_token, `${apiBase}/notes/global`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(newNote),
+      });
+      if (response.status === 503) {
+        setGlobalStatus("unavailable");
+        return false;
+      }
+      if (!response.ok) throw new Error(`Could not publish Global Note (${response.status})`);
+      const savedNote = normalizeNote(await response.json());
+      if (!savedNote) throw new Error("Invalid Global Note response");
+      setGlobalNotes((currentNotes) => [savedNote, ...currentNotes]);
+      setGlobalStatus("ready");
+      return true;
+    } catch (error) {
+      if (error instanceof AuthenticationError) {
+        await onSignOut();
+        return false;
+      }
+      console.error("Could not publish Global Note", error);
       return false;
     }
   };
@@ -302,7 +347,7 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
               <h1 className="text-3xl font-bold">My Notes</h1>
               <p className="text-base-content/70 mt-1">
                 {session
-                  ? "These notes are saved to your account and also appear in Global Notes."
+                  ? "These notes are saved privately to your account."
                   : persistLocalNotes
                     ? "No account needed. These notes stay on this device between visits."
                     : "No account needed. These notes last for this browser session only."}
@@ -319,7 +364,7 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
               <>
                 <NewNoteCard
                   onCreate={createNote}
-                  submitLabel={session ? "Jot & publish" : "Jot locally"}
+                  submitLabel={session ? "Save to account" : "Jot locally"}
                 />
                 <div className="flex flex-wrap gap-3 mt-5">
                   {myNotes.map((note) => <NoteCard key={note.id} note={note} onDelete={deleteNote} />)}
@@ -336,8 +381,19 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
           <>
             <div className="mb-5">
               <h1 className="text-3xl font-bold">Global Notes</h1>
-              <p className="text-base-content/70 mt-1">Public notes shared by signed-in Jot Notes users.</p>
+              <p className="text-base-content/70 mt-1">
+                A separate public feed. Nothing from My Notes is posted here automatically.
+              </p>
             </div>
+            {session ? (
+              <div className="mb-6">
+                <NewNoteCard onCreate={createGlobalNote} submitLabel="Publish to Global Notes" />
+              </div>
+            ) : (
+              <div className="alert mb-6" role="status">
+                You can browse Global Notes without an account. Sign in only if you want to publish one.
+              </div>
+            )}
             {globalStatus === "loading" && (
               <span className="loading loading-spinner loading-lg" aria-label="Loading Global Notes" />
             )}
@@ -359,7 +415,8 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
               <h1 className="card-title text-3xl">About Jot Notes</h1>
               <p>Start writing immediately—an account is optional.</p>
               <p>While signed out, notes remain in this browser and never enter the public feed.</p>
-              <p>When you sign in, account notes sync through Jot Notes and are visible in Global Notes.</p>
+              <p>When you sign in, My Notes sync privately to your account.</p>
+              <p>Global Notes are created separately and are always public.</p>
             </div>
           </section>
         )}
