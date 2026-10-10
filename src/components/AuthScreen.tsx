@@ -140,10 +140,10 @@ export default function AuthScreen({ onClose }: AuthScreenProps) {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete={mode === "signIn" ? "current-password" : "new-password"}
-              minLength={8}
+              minLength={mode === "signUp" ? 12 : undefined}
               required
             />
-            {mode === "signUp" && <span className="label-text-alt mt-1">Use at least 8 characters.</span>}
+            {mode === "signUp" && <span className="label-text-alt mt-1">Use at least 12 characters.</span>}
           </label>
 
           {errorMessage && <div className="alert alert-error" role="alert">{errorMessage}</div>}

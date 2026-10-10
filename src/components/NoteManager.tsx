@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import FixedFooter from "./FixedFooter";
 import Header, { type NoteView } from "./Header";
 import NewNoteCard from "./NewNoteCard";
 import NoteCard from "./NoteCard";
-import { authenticatedFetch, AuthenticationError } from "../lib/api";
-
-export const apiBase = "/api";
+import { AuthenticationError, unwrap } from "../lib/api";
+import { supabase } from "../lib/supabase";
 
 const localNotesKey = "jot-notes.local-notes.v1";
 const sessionNotesKey = "jot-notes.session-notes.v1";
@@ -25,13 +24,8 @@ export interface NewNote {
 }
 
 export interface UserData {
-  id: number;
-  username: string;
   firstName: string;
-  lastName?: string;
   themePreference: string;
-  autoSave: boolean;
-  avatarUrl?: string;
   email: string;
 }
 
@@ -108,33 +102,61 @@ function getInitialLocalNotes(persist: boolean): Note[] {
     : readNotes(window.sessionStorage, sessionNotesKey);
 }
 
-async function loadUser(accessToken: string): Promise<UserData> {
-  const response = await authenticatedFetch(accessToken, `${apiBase}/users`);
-  if (response.status === 503) throw new Error("service-unavailable");
-  if (!response.ok) throw new Error(`Could not load user (${response.status})`);
-  return response.json() as Promise<UserData>;
+interface ProfileRow {
+  first_name: string;
+  theme_preference: string | null;
+  email: string | null;
 }
 
-async function loadAccountNotes(accessToken: string): Promise<Note[]> {
-  const response = await authenticatedFetch(accessToken, `${apiBase}/notes`);
-  if (response.status === 503) throw new Error("service-unavailable");
-  if (!response.ok) throw new Error(`Could not load notes (${response.status})`);
+async function loadUser(session: Session, signal: AbortSignal): Promise<UserData> {
+  const profile = unwrap(await supabase
+    .from("users")
+    .select("first_name, theme_preference, email")
+    .eq("auth_user_id", session.user.id)
+    .abortSignal(signal)
+    .maybeSingle<ProfileRow>());
+  return {
+    firstName: profile.first_name,
+    themePreference: profile.theme_preference ?? "light",
+    email: profile.email ?? session.user.email ?? "",
+  };
+}
 
-  const noteData: unknown = await response.json();
-  if (!Array.isArray(noteData)) throw new Error("Invalid notes response");
-  return normalizeNotes(noteData);
+async function loadAccountNotes(signal: AbortSignal): Promise<Note[]> {
+  const notes: Note[] = [];
+  const pageSize = 250;
+  for (let offset = 0; ; offset += pageSize) {
+    const page = unwrap(await supabase
+      .from("notes")
+      .select("id, title, content")
+      .order("id", { ascending: false })
+      .range(offset, offset + pageSize - 1)
+      .abortSignal(signal));
+    notes.push(...normalizeNotes(page));
+    if (page.length < pageSize) return notes;
+  }
 }
 
 export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
+  const requestController = useRef<AbortController | null>(null);
   const [persistLocalNotes, setPersistLocalNotes] = useState(getInitialPersistence);
   const [localNotes, setLocalNotes] = useState<Note[]>(() => getInitialLocalNotes(getInitialPersistence()));
   const [accountNotes, setAccountNotes] = useState<Note[]>([]);
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [accountUser, setAccountUser] = useState<UserData | null>(null);
-  const [accountStatus, setAccountStatus] = useState<LoadStatus>("idle");
+  const [accountStatus, setAccountStatus] = useState<LoadStatus>(session ? "loading" : "idle");
   const [globalStatus, setGlobalStatus] = useState<LoadStatus>("idle");
   const [currentView, setCurrentView] = useState<NoteView>("my");
   const [theme, setTheme] = useState(getInitialTheme);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    requestController.current = controller;
+    return () => {
+      controller.abort();
+      requestController.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -163,15 +185,13 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
   useEffect(() => {
     let active = true;
     if (!session) return () => { active = false; };
-    const accessToken = session.access_token;
+    const currentSession = session;
+    const controller = new AbortController();
 
     async function loadAccount() {
       setAccountStatus("loading");
       try {
-        // Finish provisioning a new profile before asking the notes endpoint
-        // to look it up as well.
-        const user = await loadUser(accessToken);
-        const notes = await loadAccountNotes(accessToken);
+        const [user, notes] = await Promise.all([loadUser(currentSession, controller.signal), loadAccountNotes(controller.signal)]);
         if (!active) return;
         setAccountUser(user);
         setAccountNotes(notes);
@@ -189,7 +209,7 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
     }
 
     void loadAccount();
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); };
   }, [session, onSignOut]);
 
   useEffect(() => {
@@ -199,10 +219,12 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
     async function loadGlobalNotes() {
       setGlobalStatus("loading");
       try {
-        const response = await fetch(`${apiBase}/notes/global`, { signal: abortController.signal });
-        if (!response.ok) throw new Error(`Could not load global notes (${response.status})`);
-        const noteData: unknown = await response.json();
-        if (!Array.isArray(noteData)) throw new Error("Invalid global notes response");
+        const noteData = unwrap(await supabase
+          .from("global_notes")
+          .select("id, title, content")
+          .order("id", { ascending: false })
+          .limit(100)
+          .abortSignal(abortController.signal));
         setGlobalNotes(normalizeNotes(noteData));
         setGlobalStatus("ready");
       } catch (error) {
@@ -218,19 +240,13 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
 
   const userData: UserData = session
     ? accountUser ?? {
-      id: -1,
-      username: "",
       firstName: session.user.email?.split("@")[0] || "Account",
       themePreference: theme,
-      autoSave: true,
       email: session.user.email ?? "",
     }
     : {
-      id: -1,
-      username: "local",
       firstName: "Guest",
       themePreference: theme,
-      autoSave: persistLocalNotes,
       email: "",
     };
 
@@ -245,57 +261,53 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
       return true;
     }
 
+    const signal = requestController.current?.signal;
+    if (!signal || signal.aborted) return false;
     try {
-      const response = await authenticatedFetch(session.access_token, `${apiBase}/notes`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(newNote),
-      });
-      if (response.status === 503) {
-        setAccountStatus("unavailable");
-        return false;
-      }
-      if (!response.ok) throw new Error(`Could not save note (${response.status})`);
-      const savedNote = normalizeNote(await response.json());
+      const savedNote = normalizeNote(unwrap(await supabase
+        .from("notes")
+        .insert(newNote)
+        .abortSignal(signal)
+        .select("id, title, content")
+        .single()));
+      if (signal.aborted) return false;
       if (!savedNote) throw new Error("Invalid saved note response");
       setAccountNotes((currentNotes) => [savedNote, ...currentNotes]);
       return true;
     } catch (error) {
+      if (signal.aborted) return false;
       if (error instanceof AuthenticationError) {
         await onSignOut();
         return false;
       }
-      console.error("Could not save account note", error);
-      return false;
+      throw error instanceof Error ? error : new Error("Could not save your note. Please try again.");
     }
   };
 
   const createGlobalNote = async (newNote: NewNote): Promise<boolean> => {
     if (!session || !newNote.title) return false;
 
+    const signal = requestController.current?.signal;
+    if (!signal || signal.aborted) return false;
     try {
-      const response = await authenticatedFetch(session.access_token, `${apiBase}/notes/global`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(newNote),
-      });
-      if (response.status === 503) {
-        setGlobalStatus("unavailable");
-        return false;
-      }
-      if (!response.ok) throw new Error(`Could not publish Global Note (${response.status})`);
-      const savedNote = normalizeNote(await response.json());
+      const savedNote = normalizeNote(unwrap(await supabase
+        .from("global_notes")
+        .insert(newNote)
+        .abortSignal(signal)
+        .select("id, title, content")
+        .single()));
+      if (signal.aborted) return false;
       if (!savedNote) throw new Error("Invalid Global Note response");
       setGlobalNotes((currentNotes) => [savedNote, ...currentNotes]);
       setGlobalStatus("ready");
       return true;
     } catch (error) {
+      if (signal.aborted) return false;
       if (error instanceof AuthenticationError) {
         await onSignOut();
         return false;
       }
-      console.error("Could not publish Global Note", error);
-      return false;
+      throw error instanceof Error ? error : new Error("Could not publish your note. Please try again.");
     }
   };
 
@@ -305,22 +317,20 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
       return;
     }
 
+    const signal = requestController.current?.signal;
+    if (!signal || signal.aborted) return;
     try {
-      const response = await authenticatedFetch(session.access_token, `${apiBase}/notes/${noteId}`, {
-        method: "DELETE",
-      });
-      if (response.status === 503) {
-        setAccountStatus("unavailable");
-        return;
-      }
-      if (!response.ok) throw new Error(`Could not delete note (${response.status})`);
+      const deleted = unwrap(await supabase.from("notes").delete().eq("id", noteId).abortSignal(signal).select("id"));
+      if (signal.aborted) return;
+      if (deleted.length === 0) throw new Error("Note not found");
       setAccountNotes((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
     } catch (error) {
+      if (signal.aborted) return;
       if (error instanceof AuthenticationError) {
         await onSignOut();
         return;
       }
-      console.error("Could not delete account note", error);
+      throw error instanceof Error ? error : new Error("Could not delete your note. Please try again.");
     }
   };
 
