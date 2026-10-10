@@ -39,22 +39,34 @@ type LoadStatus = "idle" | "loading" | "ready" | "unavailable";
 function normalizeNote(value: unknown): Note | null {
   if (typeof value !== "object" || value === null) return null;
   const candidate = value as Record<string, unknown>;
-  const id = typeof candidate.id === "number"
-    ? candidate.id
-    : typeof candidate.id === "string" && /^\d+$/.test(candidate.id)
-      ? Number(candidate.id)
-      : Number.NaN;
+  const id =
+    typeof candidate.id === "number"
+      ? candidate.id
+      : typeof candidate.id === "string" && /^\d+$/.test(candidate.id)
+        ? Number(candidate.id)
+        : Number.NaN;
 
   if (!Number.isSafeInteger(id) || id < 1) return null;
-  if (typeof candidate.title !== "string" || candidate.title.trim().length === 0) return null;
-  if (candidate.content !== undefined && candidate.content !== null && typeof candidate.content !== "string") {
+  if (
+    typeof candidate.title !== "string" ||
+    candidate.title.trim().length === 0
+  )
+    return null;
+  if (
+    candidate.content !== undefined &&
+    candidate.content !== null &&
+    typeof candidate.content !== "string"
+  ) {
     return null;
   }
 
   return {
     id,
     title: candidate.title.slice(0, 200),
-    content: typeof candidate.content === "string" ? candidate.content.slice(0, 20_000) : undefined,
+    content:
+      typeof candidate.content === "string"
+        ? candidate.content.slice(0, 20_000)
+        : undefined,
   };
 }
 
@@ -93,7 +105,9 @@ function getInitialTheme(): string {
   } catch {
     // Use the system preference when local storage is unavailable.
   }
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function getInitialLocalNotes(persist: boolean): Note[] {
@@ -108,13 +122,18 @@ interface ProfileRow {
   email: string | null;
 }
 
-async function loadUser(session: Session, signal: AbortSignal): Promise<UserData> {
-  const profile = unwrap(await supabase
-    .from("users")
-    .select("first_name, theme_preference, email")
-    .eq("auth_user_id", session.user.id)
-    .abortSignal(signal)
-    .maybeSingle<ProfileRow>());
+async function loadUser(
+  session: Session,
+  signal: AbortSignal,
+): Promise<UserData> {
+  const profile = unwrap(
+    await supabase
+      .from("users")
+      .select("first_name, theme_preference, email")
+      .eq("auth_user_id", session.user.id)
+      .abortSignal(signal)
+      .maybeSingle<ProfileRow>(),
+  );
   return {
     firstName: profile.first_name,
     themePreference: profile.theme_preference ?? "light",
@@ -126,12 +145,14 @@ async function loadAccountNotes(signal: AbortSignal): Promise<Note[]> {
   const notes: Note[] = [];
   const pageSize = 250;
   for (let offset = 0; ; offset += pageSize) {
-    const page = unwrap(await supabase
-      .from("notes")
-      .select("id, title, content")
-      .order("id", { ascending: false })
-      .range(offset, offset + pageSize - 1)
-      .abortSignal(signal));
+    const page = unwrap(
+      await supabase
+        .from("notes")
+        .select("id, title, content")
+        .order("id", { ascending: false })
+        .range(offset, offset + pageSize - 1)
+        .abortSignal(signal),
+    );
     notes.push(...normalizeNotes(page));
     if (page.length < pageSize) return notes;
   }
@@ -139,12 +160,18 @@ async function loadAccountNotes(signal: AbortSignal): Promise<Note[]> {
 
 export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
   const requestController = useRef<AbortController | null>(null);
-  const [persistLocalNotes, setPersistLocalNotes] = useState(getInitialPersistence);
-  const [localNotes, setLocalNotes] = useState<Note[]>(() => getInitialLocalNotes(getInitialPersistence()));
+  const [persistLocalNotes, setPersistLocalNotes] = useState(
+    getInitialPersistence,
+  );
+  const [localNotes, setLocalNotes] = useState<Note[]>(() =>
+    getInitialLocalNotes(getInitialPersistence()),
+  );
   const [accountNotes, setAccountNotes] = useState<Note[]>([]);
   const [globalNotes, setGlobalNotes] = useState<Note[]>([]);
   const [accountUser, setAccountUser] = useState<UserData | null>(null);
-  const [accountStatus, setAccountStatus] = useState<LoadStatus>(session ? "loading" : "idle");
+  const [accountStatus, setAccountStatus] = useState<LoadStatus>(
+    session ? "loading" : "idle",
+  );
   const [globalStatus, setGlobalStatus] = useState<LoadStatus>("idle");
   const [currentView, setCurrentView] = useState<NoteView>("my");
   const [theme, setTheme] = useState(getInitialTheme);
@@ -184,14 +211,20 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
 
   useEffect(() => {
     let active = true;
-    if (!session) return () => { active = false; };
+    if (!session)
+      return () => {
+        active = false;
+      };
     const currentSession = session;
     const controller = new AbortController();
 
     async function loadAccount() {
       setAccountStatus("loading");
       try {
-        const [user, notes] = await Promise.all([loadUser(currentSession, controller.signal), loadAccountNotes(controller.signal)]);
+        const [user, notes] = await Promise.all([
+          loadUser(currentSession, controller.signal),
+          loadAccountNotes(controller.signal),
+        ]);
         if (!active) return;
         setAccountUser(user);
         setAccountNotes(notes);
@@ -209,7 +242,10 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
     }
 
     void loadAccount();
-    return () => { active = false; controller.abort(); };
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [session, onSignOut]);
 
   useEffect(() => {
@@ -219,12 +255,14 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
     async function loadGlobalNotes() {
       setGlobalStatus("loading");
       try {
-        const noteData = unwrap(await supabase
-          .from("global_notes")
-          .select("id, title, content")
-          .order("id", { ascending: false })
-          .limit(100)
-          .abortSignal(abortController.signal));
+        const noteData = unwrap(
+          await supabase
+            .from("global_notes")
+            .select("id, title, content")
+            .order("id", { ascending: false })
+            .limit(100)
+            .abortSignal(abortController.signal),
+        );
         setGlobalNotes(normalizeNotes(noteData));
         setGlobalStatus("ready");
       } catch (error) {
@@ -239,24 +277,30 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
   }, [currentView]);
 
   const userData: UserData = session
-    ? accountUser ?? {
-      firstName: session.user.email?.split("@")[0] || "Account",
-      themePreference: theme,
-      email: session.user.email ?? "",
-    }
+    ? (accountUser ?? {
+        firstName: session.user.email?.split("@")[0] || "Account",
+        themePreference: theme,
+        email: session.user.email ?? "",
+      })
     : {
-      firstName: "Guest",
-      themePreference: theme,
-      email: "",
-    };
+        firstName: "Guest",
+        themePreference: theme,
+        email: "",
+      };
 
   const createNote = async (newNote: NewNote): Promise<boolean> => {
     if (!newNote.title) return false;
 
     if (!session) {
       setLocalNotes((currentNotes) => {
-        const highestId = currentNotes.reduce((highest, note) => Math.max(highest, note.id), Date.now());
-        return [{ id: highestId + 1, title: newNote.title, content: newNote.content }, ...currentNotes];
+        const highestId = currentNotes.reduce(
+          (highest, note) => Math.max(highest, note.id),
+          Date.now(),
+        );
+        return [
+          { id: highestId + 1, title: newNote.title, content: newNote.content },
+          ...currentNotes,
+        ];
       });
       return true;
     }
@@ -264,12 +308,16 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
     const signal = requestController.current?.signal;
     if (!signal || signal.aborted) return false;
     try {
-      const savedNote = normalizeNote(unwrap(await supabase
-        .from("notes")
-        .insert(newNote)
-        .abortSignal(signal)
-        .select("id, title, content")
-        .single()));
+      const savedNote = normalizeNote(
+        unwrap(
+          await supabase
+            .from("notes")
+            .insert(newNote)
+            .abortSignal(signal)
+            .select("id, title, content")
+            .single(),
+        ),
+      );
       if (signal.aborted) return false;
       if (!savedNote) throw new Error("Invalid saved note response");
       setAccountNotes((currentNotes) => [savedNote, ...currentNotes]);
@@ -280,7 +328,9 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
         await onSignOut();
         return false;
       }
-      throw error instanceof Error ? error : new Error("Could not save your note. Please try again.");
+      throw error instanceof Error
+        ? error
+        : new Error("Could not save your note. Please try again.");
     }
   };
 
@@ -290,12 +340,16 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
     const signal = requestController.current?.signal;
     if (!signal || signal.aborted) return false;
     try {
-      const savedNote = normalizeNote(unwrap(await supabase
-        .from("global_notes")
-        .insert(newNote)
-        .abortSignal(signal)
-        .select("id, title, content")
-        .single()));
+      const savedNote = normalizeNote(
+        unwrap(
+          await supabase
+            .from("global_notes")
+            .insert(newNote)
+            .abortSignal(signal)
+            .select("id, title, content")
+            .single(),
+        ),
+      );
       if (signal.aborted) return false;
       if (!savedNote) throw new Error("Invalid Global Note response");
       setGlobalNotes((currentNotes) => [savedNote, ...currentNotes]);
@@ -307,30 +361,45 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
         await onSignOut();
         return false;
       }
-      throw error instanceof Error ? error : new Error("Could not publish your note. Please try again.");
+      throw error instanceof Error
+        ? error
+        : new Error("Could not publish your note. Please try again.");
     }
   };
 
   const deleteNote = async (noteId: number): Promise<void> => {
     if (!session) {
-      setLocalNotes((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
+      setLocalNotes((currentNotes) =>
+        currentNotes.filter((note) => note.id !== noteId),
+      );
       return;
     }
 
     const signal = requestController.current?.signal;
     if (!signal || signal.aborted) return;
     try {
-      const deleted = unwrap(await supabase.from("notes").delete().eq("id", noteId).abortSignal(signal).select("id"));
+      const deleted = unwrap(
+        await supabase
+          .from("notes")
+          .delete()
+          .eq("id", noteId)
+          .abortSignal(signal)
+          .select("id"),
+      );
       if (signal.aborted) return;
       if (deleted.length === 0) throw new Error("Note not found");
-      setAccountNotes((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
+      setAccountNotes((currentNotes) =>
+        currentNotes.filter((note) => note.id !== noteId),
+      );
     } catch (error) {
       if (signal.aborted) return;
       if (error instanceof AuthenticationError) {
         await onSignOut();
         return;
       }
-      throw error instanceof Error ? error : new Error("Could not delete your note. Please try again.");
+      throw error instanceof Error
+        ? error
+        : new Error("Could not delete your note. Please try again.");
     }
   };
 
@@ -365,10 +434,14 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
             </div>
 
             {session && accountStatus === "loading" ? (
-              <span className="loading loading-spinner loading-lg" aria-label="Loading account notes" />
+              <span
+                className="loading loading-spinner loading-lg"
+                aria-label="Loading account notes"
+              />
             ) : session && accountStatus === "unavailable" ? (
               <div className="alert alert-error" role="alert">
-                Account notes are temporarily unavailable. Your logged-out local notes are still safe on this device.
+                Account notes are temporarily unavailable. Your logged-out local
+                notes are still safe on this device.
               </div>
             ) : (
               <>
@@ -377,10 +450,14 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
                   submitLabel={session ? "Save to account" : "Jot locally"}
                 />
                 <div className="flex flex-wrap gap-3 mt-5">
-                  {myNotes.map((note) => <NoteCard key={note.id} note={note} onDelete={deleteNote} />)}
+                  {myNotes.map((note) => (
+                    <NoteCard key={note.id} note={note} onDelete={deleteNote} />
+                  ))}
                 </div>
                 {myNotes.length === 0 && (
-                  <p className="mt-6 text-base-content/60">Your first note can start right here.</p>
+                  <p className="mt-6 text-base-content/60">
+                    Your first note can start right here.
+                  </p>
                 )}
               </>
             )}
@@ -392,28 +469,44 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
             <div className="mb-5">
               <h1 className="text-3xl font-bold">Global Notes</h1>
               <p className="text-base-content/70 mt-1">
-                A separate public feed. Nothing from My Notes is posted here automatically.
+                A separate public feed. Nothing from My Notes is posted here
+                automatically.
               </p>
             </div>
             {session ? (
               <div className="mb-6">
-                <NewNoteCard onCreate={createGlobalNote} submitLabel="Publish to Global Notes" />
+                <NewNoteCard
+                  onCreate={createGlobalNote}
+                  submitLabel="Publish to Global Notes"
+                />
               </div>
             ) : (
-              <div className="alert mb-6" role="status">
-                You can browse Global Notes without an account. Sign in only if you want to publish one.
+              <div role="alert" className="alert alert-info mb-2">
+                <span>
+                  You can browse Global Notes without an account. Sign in only
+                  if you want to publish one.
+                </span>
               </div>
             )}
             {globalStatus === "loading" && (
-              <span className="loading loading-spinner loading-lg" aria-label="Loading Global Notes" />
+              <span
+                className="loading loading-spinner loading-lg"
+                aria-label="Loading Global Notes"
+              />
             )}
             {globalStatus === "unavailable" && (
-              <div className="alert alert-error" role="alert">Global Notes are temporarily unavailable.</div>
+              <div className="alert alert-error" role="alert">
+                Global Notes are temporarily unavailable.
+              </div>
             )}
             {globalStatus === "ready" && (
               <div className="flex flex-wrap gap-3">
-                {globalNotes.map((note) => <NoteCard key={note.id} note={note} />)}
-                {globalNotes.length === 0 && <p className="text-base-content/60">No Global Notes yet.</p>}
+                {globalNotes.map((note) => (
+                  <NoteCard key={note.id} note={note} />
+                ))}
+                {globalNotes.length === 0 && (
+                  <p className="text-base-content/60">No Global Notes yet.</p>
+                )}
               </div>
             )}
           </>
@@ -424,7 +517,10 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
             <div className="card-body">
               <h1 className="card-title text-3xl">About Jot Notes</h1>
               <p>Start writing immediately—an account is optional.</p>
-              <p>While signed out, notes remain in this browser and never enter the public feed.</p>
+              <p>
+                While signed out, notes remain in this browser and never enter
+                the public feed.
+              </p>
               <p>When you sign in, My Notes sync privately to your account.</p>
               <p>Global Notes are created separately and are always public.</p>
             </div>
@@ -434,7 +530,11 @@ export default function NoteManager({ session, onSignOut }: NoteManagerProps) {
 
       <FixedFooter
         theme={theme}
-        onToggleTheme={() => setTheme((currentTheme) => currentTheme === "light" ? "dark" : "light")}
+        onToggleTheme={() =>
+          setTheme((currentTheme) =>
+            currentTheme === "light" ? "dark" : "light",
+          )
+        }
         showLocalStorageSetting={!session}
         persistLocalNotes={persistLocalNotes}
         onPersistenceChange={changePersistence}
