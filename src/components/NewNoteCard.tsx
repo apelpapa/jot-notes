@@ -11,10 +11,12 @@ export default function NewNoteCard({ onCreate, submitLabel, disabled = false }:
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setSaving(true);
+    setErrorMessage(null);
 
     try {
       const saved = await onCreate({ title: noteTitle.trim(), content: noteContent });
@@ -22,6 +24,8 @@ export default function NewNoteCard({ onCreate, submitLabel, disabled = false }:
         setNoteTitle("");
         setNoteContent("");
       }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Could not save your note. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -54,6 +58,7 @@ export default function NewNoteCard({ onCreate, submitLabel, disabled = false }:
               disabled={disabled || saving}
             />
           </label>
+          {errorMessage && <div className="alert alert-error" role="alert">{errorMessage}</div>}
           <div className="card-actions justify-end">
             <button type="submit" className="btn btn-primary" disabled={disabled || saving}>
               {saving && <span className="loading loading-spinner loading-sm" />}

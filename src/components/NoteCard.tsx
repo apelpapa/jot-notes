@@ -9,12 +9,16 @@ interface NoteCardProps {
 
 export default function NoteCard({ note, onDelete }: NoteCardProps) {
   const [deleting, setDeleting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const deleteNote = async () => {
     if (!onDelete) return;
     setDeleting(true);
+    setErrorMessage(null);
     try {
       await onDelete(note.id);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Could not delete your note. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -25,6 +29,7 @@ export default function NoteCard({ note, onDelete }: NoteCardProps) {
       <div className="flex min-h-28 flex-col items-start">
         <h2 className="font-bold text-xl break-words w-full">{note.title}</h2>
         {note.content && <p className="mt-3 whitespace-pre-wrap break-words w-full">{note.content}</p>}
+        {errorMessage && <p className="text-error mt-3" role="alert">{errorMessage}</p>}
         {onDelete && (
           <button
             type="button"

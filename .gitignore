@@ -27,3 +27,7 @@ dist-ssr
 *.sln
 *.sw?
 ThingsToTest.txt
+
+supabase/.temp/
+
+supabase/.branches/
